@@ -107,7 +107,7 @@ with col1:
                 }])
                 df = pd.concat([df, neue_zeile], ignore_index=True)
                 speichere_zeiten(df)
-                st.experimental_rerun()
+                st.rerun()
 
     st.markdown("---")
     st.subheader("Aktionen")
@@ -117,7 +117,7 @@ with col1:
             df = pd.DataFrame(columns=df.columns)
             speichere_zeiten(df)
             st.success("Alle Daten wurden gelöscht.")
-            st.experimental_rerun()
+            st.rerun()
 
     st.markdown("---")
 
@@ -170,5 +170,5 @@ with col2:
                     if not idx_to_del.empty:
                         df = df.drop(idx_to_del[0]).reset_index(drop=True)
                         speichere_zeiten(df)
-                        st.experimental_rerun()
+                        st.rerun()
 
