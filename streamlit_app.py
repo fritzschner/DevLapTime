@@ -167,4 +167,8 @@ with col2:
                         (df["Zeitstr"] == row["Zeitstr"])
                     )
                     idx_to_del = df[mask].index
-                    if not idx_to_
+                    if not idx_to_del.empty:
+                        df = df.drop(idx_to_del[0]).reset_index(drop=True)
+                        speichere_zeiten(df)
+                        st.experimental_rerun()
+
