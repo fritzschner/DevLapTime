@@ -36,30 +36,42 @@ def speichere_zeiten(df):
 # ---------------------------------------------------------------
 
 def main():
-    st.set_page_config(page_title="RaceKino Rundenzeiten", page_icon="🏁", layout="centered")
+    st.set_page_config(page_title="RaceKino Rundenzeiten", page_icon="🏁", layout="wide")
+
+    # -----------------------------------------------------------
+    # Stil & Layout (modernes schwarz-rotes Theme)
+    # -----------------------------------------------------------
     st.markdown(
         """
         <style>
         body {
-            background-color: #111;
+            background-color: #0d0d0d;
             color: #fff;
+            font-family: 'Roboto', sans-serif;
+        }
+        .main {
+            background-color: #0d0d0d;
+        }
+        h1, h2, h3, h4, h5 {
+            color: #e53935;
         }
         .stButton>button {
-            background-color: #d32f2f;
+            background: linear-gradient(90deg, #e53935 0%, #b71c1c 100%);
             color: white;
             border: none;
             border-radius: 8px;
-            padding: 0.5em 1.5em;
+            padding: 0.6em 1.5em;
             font-weight: bold;
+            font-size: 15px;
         }
         .stButton>button:hover {
-            background-color: #b71c1c;
-            color: white;
+            background: linear-gradient(90deg, #ff5252 0%, #c62828 100%);
         }
         div[data-testid="stForm"] {
-            background-color: #222;
-            padding: 1em;
+            background-color: #1b1b1b;
+            padding: 1.2em;
             border-radius: 10px;
+            border: 1px solid #333;
         }
         </style>
         """,
@@ -69,11 +81,11 @@ def main():
     st.title("🏁 RaceKino Rundenzeiten")
 
     df = lade_zeiten()
-    df_full = df.copy()  # für Rangliste unverändert aufbewahren
+    df_full = df.copy()
 
-    # ---------------------------------------------------------------
+    # -----------------------------------------------------------
     # Eingabeformular
-    # ---------------------------------------------------------------
+    # -----------------------------------------------------------
     with st.form("eingabe_formular"):
         fahrer = st.text_input("Fahrername")
         col1, col2, col3 = st.columns(3)
@@ -103,23 +115,22 @@ def main():
             st.rerun()
             return
 
-    # ---------------------------------------------------------------
+    # -----------------------------------------------------------
     # Filter, Anzeige & Löschfunktionen
-    # ---------------------------------------------------------------
+    # -----------------------------------------------------------
     if not df.empty:
-        st.subheader("⏱️ Letzte 10 erfasste Zeiten")
+        st.subheader("⏱️ Letzte 10 schnellste Zeiten")
 
-        # Suchfeld
         suchtext = st.text_input("🔍 Fahrer filtern", placeholder="Name eingeben...")
+
+        df_sorted = df.sort_values("Zeit (s)").reset_index(drop=True)
         if suchtext:
-            df = df[df["Fahrer"].str.contains(suchtext, case=False, na=False)]
+            df_sorted = df_sorted[df_sorted["Fahrer"].str.contains(suchtext, case=False, na=False)]
 
-        # Sortieren & nur letzte 10 anzeigen
-        df = df.sort_values("Zeit (s)").head(10)
+        df_view = df_sorted.head(10)
 
-        # Anzeige der Zeiten
-        df["Nr."] = range(1, len(df) + 1)
-        for i, row in df.iterrows():
+        df_view["Nr."] = range(1, len(df_view) + 1)
+        for i, row in df_view.iterrows():
             col1, col2, col3, col4 = st.columns([1, 3, 4, 1])
             with col1:
                 st.markdown(f"**{row['Nr.']}**")
@@ -145,11 +156,12 @@ def main():
                         st.rerun()
                         return
 
-        # ---------------------------------------------------------------
-        # Download-Buttons
-        # ---------------------------------------------------------------
-        st.markdown("### 📥 Datenexport")
-        col_dl1, col_dl2 = st.columns(2)
+        st.divider()
+
+        # -----------------------------------------------------------
+        # Downloads und Alle-Löschen
+        # -----------------------------------------------------------
+        col_dl1, col_dl2, col_clear = st.columns([1, 1, 1])
         with col_dl1:
             st.download_button(
                 "📄 Alle Zeiten herunterladen",
@@ -158,23 +170,21 @@ def main():
                 mime="text/csv"
             )
         with col_dl2:
-            # Wird später mit Rangliste befüllt
-            pass
+            pass  # wird später mit Rangliste gefüllt
+        with col_clear:
+            if st.button("🚨 Alle Daten löschen"):
+                sicher = st.checkbox("Ich bin sicher, dass ich alles löschen will.")
+                if sicher:
+                    os.remove(DATEIPFAD)
+                    st.warning("Alle Zeiten wurden gelöscht!")
+                    st.rerun()
+                    return
 
-        # ---------------------------------------------------------------
-        # Button: Alle Daten löschen
-        # ---------------------------------------------------------------
-        if st.button("🚨 Alle Daten löschen"):
-            sicher = st.checkbox("Ich bin sicher, dass ich alles löschen will.")
-            if sicher:
-                os.remove(DATEIPFAD)
-                st.warning("Alle Zeiten wurden gelöscht!")
-                st.rerun()
-                return
+        st.divider()
 
-        # ---------------------------------------------------------------
-        # Rangliste berechnen
-        # ---------------------------------------------------------------
+        # -----------------------------------------------------------
+        # Rangliste
+        # -----------------------------------------------------------
         st.subheader("🏆 Aktuelle Rangliste (Top 3 Durchschnitt)")
 
         rangliste = []
@@ -192,11 +202,11 @@ def main():
             rang_df = pd.DataFrame(rangliste).sort_values("Wert (s)").reset_index(drop=True)
             rang_df["Platz"] = rang_df.index + 1
 
-            # Rangliste anzeigen
             for _, row in rang_df.iterrows():
                 platz = row["Platz"]
                 fahrer = row["Fahrer"]
                 zeit = row["Durchschnitt (Top 3)"]
+
                 if platz == 1:
                     style = "background-color:#FFD700;color:black;font-weight:bold;"
                 elif platz == 2:
@@ -204,15 +214,14 @@ def main():
                 elif platz == 3:
                     style = "background-color:#CD7F32;color:white;font-weight:bold;"
                 else:
-                    style = "background-color:#222;color:white;"
+                    style = "background-color:#1b1b1b;color:white;"
                 st.markdown(
-                    f"<div style='padding:6px;margin:3px;border-radius:6px;{style}'>"
+                    f"<div style='padding:8px;margin:4px;border-radius:8px;{style}'>"
                     f"<span style='font-size:18px'><b>{platz}.</b> {fahrer} – {zeit}</span>"
                     f"</div>",
                     unsafe_allow_html=True
                 )
 
-            # Rangliste-Download
             rang_df_export = rang_df[["Platz", "Fahrer", "Durchschnitt (Top 3)"]]
             col_dl2.download_button(
                 "🏁 Rangliste herunterladen",
@@ -225,8 +234,6 @@ def main():
     else:
         st.info("Bitte gib die ersten Zeiten ein.")
 
-# ---------------------------------------------------------------
-# Startpunkt
 # ---------------------------------------------------------------
 if __name__ == "__main__":
     main()
