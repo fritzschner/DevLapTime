@@ -52,8 +52,11 @@ def main():
         .main {
             background-color: #0d0d0d;
         }
-        h1, h2, h3, h4, h5 {
-            color: #e53935;
+        .title-red {
+            background-color: #e53935;
+            color: white;
+            padding: 10px;
+            border-radius: 8px;
         }
         .stButton>button {
             background: linear-gradient(90deg, #e53935 0%, #b71c1c 100%);
@@ -78,10 +81,65 @@ def main():
         unsafe_allow_html=True
     )
 
-    st.title("🏁 RaceKino Rundenzeiten")
+    st.markdown('<h1 class="title-red">🏁 RaceKino Rundenzeiten</h1>', unsafe_allow_html=True)
 
     df = lade_zeiten()
     df_full = df.copy()
+
+    # -----------------------------------------------------------
+    # Rangliste oben
+    # -----------------------------------------------------------
+    st.subheader("🏆 Aktuelle Rangliste (Top 3 Durchschnitt)")
+
+    rangliste = []
+    for name, gruppe in df_full.groupby("Fahrer"):
+        beste3 = gruppe["Zeit (s)"].nsmallest(3)
+        if len(beste3) == 3:
+            avg = beste3.mean()
+            rangliste.append({
+                "Fahrer": name,
+                "Durchschnitt (Top 3)": sekunden_zu_zeitstr(avg),
+                "Wert (s)": avg
+            })
+
+    if rangliste:
+        rang_df = pd.DataFrame(rangliste).sort_values("Wert (s)").reset_index(drop=True)
+        rang_df["Platz"] = rang_df.index + 1
+
+        col_dl1, col_dl2 = st.columns([1,1])  # Platz für Download-Button
+
+        for _, row in rang_df.iterrows():
+            platz = row["Platz"]
+            fahrer = row["Fahrer"]
+            zeit = row["Durchschnitt (Top 3)"]
+
+            if platz == 1:
+                style = "background-color:#FFD700;color:black;font-weight:bold;"
+            elif platz == 2:
+                style = "background-color:#C0C0C0;color:black;font-weight:bold;"
+            elif platz == 3:
+                style = "background-color:#CD7F32;color:white;font-weight:bold;"
+            else:
+                style = "background-color:#1b1b1b;color:white;"
+            st.markdown(
+                f"<div style='padding:8px;margin:4px;border-radius:8px;{style}'>"
+                f"<span style='font-size:18px'><b>{platz}.</b> {fahrer} – {zeit}</span>"
+                f"</div>",
+                unsafe_allow_html=True
+            )
+
+        # Rangliste Download
+        rang_df_export = rang_df[["Platz", "Fahrer", "Durchschnitt (Top 3)"]]
+        col_dl2.download_button(
+            "🏁 Rangliste herunterladen",
+            data=rang_df_export.to_csv(sep=";", index=False).encode("utf-8"),
+            file_name="rangliste.csv",
+            mime="text/csv"
+        )
+    else:
+        st.info("Mindestens ein Fahrer benötigt 3 Zeiten für die Rangliste.")
+
+    st.divider()
 
     # -----------------------------------------------------------
     # Eingabeformular
@@ -116,7 +174,7 @@ def main():
             return
 
     # -----------------------------------------------------------
-    # Filter, Anzeige & Löschfunktionen
+    # Letzte 10 Rundenzeiten
     # -----------------------------------------------------------
     if not df.empty:
         st.subheader("⏱️ Letzte 10 schnellste Zeiten")
@@ -159,9 +217,9 @@ def main():
         st.divider()
 
         # -----------------------------------------------------------
-        # Downloads und Alle-Löschen
+        # Download & Alle löschen Buttons
         # -----------------------------------------------------------
-        col_dl1, col_dl2, col_clear = st.columns([1, 1, 1])
+        col_dl1, col_dl2, col_clear = st.columns([1,1,1])
         with col_dl1:
             st.download_button(
                 "📄 Alle Zeiten herunterladen",
@@ -170,7 +228,7 @@ def main():
                 mime="text/csv"
             )
         with col_dl2:
-            pass  # wird später mit Rangliste gefüllt
+            pass
         with col_clear:
             if st.button("🚨 Alle Daten löschen"):
                 sicher = st.checkbox("Ich bin sicher, dass ich alles löschen will.")
@@ -179,58 +237,6 @@ def main():
                     st.warning("Alle Zeiten wurden gelöscht!")
                     st.rerun()
                     return
-
-        st.divider()
-
-        # -----------------------------------------------------------
-        # Rangliste
-        # -----------------------------------------------------------
-        st.subheader("🏆 Aktuelle Rangliste (Top 3 Durchschnitt)")
-
-        rangliste = []
-        for name, gruppe in df_full.groupby("Fahrer"):
-            beste3 = gruppe["Zeit (s)"].nsmallest(3)
-            if len(beste3) == 3:
-                avg = beste3.mean()
-                rangliste.append({
-                    "Fahrer": name,
-                    "Durchschnitt (Top 3)": sekunden_zu_zeitstr(avg),
-                    "Wert (s)": avg
-                })
-
-        if rangliste:
-            rang_df = pd.DataFrame(rangliste).sort_values("Wert (s)").reset_index(drop=True)
-            rang_df["Platz"] = rang_df.index + 1
-
-            for _, row in rang_df.iterrows():
-                platz = row["Platz"]
-                fahrer = row["Fahrer"]
-                zeit = row["Durchschnitt (Top 3)"]
-
-                if platz == 1:
-                    style = "background-color:#FFD700;color:black;font-weight:bold;"
-                elif platz == 2:
-                    style = "background-color:#C0C0C0;color:black;font-weight:bold;"
-                elif platz == 3:
-                    style = "background-color:#CD7F32;color:white;font-weight:bold;"
-                else:
-                    style = "background-color:#1b1b1b;color:white;"
-                st.markdown(
-                    f"<div style='padding:8px;margin:4px;border-radius:8px;{style}'>"
-                    f"<span style='font-size:18px'><b>{platz}.</b> {fahrer} – {zeit}</span>"
-                    f"</div>",
-                    unsafe_allow_html=True
-                )
-
-            rang_df_export = rang_df[["Platz", "Fahrer", "Durchschnitt (Top 3)"]]
-            col_dl2.download_button(
-                "🏁 Rangliste herunterladen",
-                data=rang_df_export.to_csv(sep=";", index=False).encode("utf-8"),
-                file_name="rangliste.csv",
-                mime="text/csv"
-            )
-        else:
-            st.info("Mindestens ein Fahrer benötigt 3 Zeiten für die Rangliste.")
     else:
         st.info("Bitte gib die ersten Zeiten ein.")
 
