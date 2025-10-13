@@ -25,7 +25,7 @@ def speichere_zeiten(df):
     df.to_csv(DATEIPFAD, sep="\t", index=False)
 
 def main():
-    st.title("Rundenzeiten-Erfassung & Rangliste (Textdatei)")
+    st.title("RaceKino Rundenzeiten")
 
     df = lade_zeiten()
 
