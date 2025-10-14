@@ -180,6 +180,14 @@ def main():
         else:
             st.info("Mindestens 3 Zeiten pro Fahrer erforderlich.")
 
+    # ---- Bestzeiten ermitteln ----
+    top3_dict = {}
+    best_dict = {}
+    for name, gruppe in df_event.groupby("Fahrer"):
+        sortiert = gruppe.sort_values("Zeit (s)")
+        best_dict[name] = sortiert.iloc[0]["Zeit (s)"] if not sortiert.empty else None
+        top3_dict[name] = set(sortiert["Zeit (s)"].nsmallest(3))
+        
     # ---- Letzte Rundenzeiten responsive ----
     if not df.empty and event_filter:
         st.subheader(f"⏱️ Letzte/Beste Rundenzeiten für Event: {event_filter}")
@@ -238,14 +246,6 @@ def main():
                 unsafe_allow_html=True
             )
         st.markdown('</div>', unsafe_allow_html=True)
-
-    # ---- Bestzeiten ermitteln ----
-    top3_dict = {}
-    best_dict = {}
-    for name, gruppe in df_event.groupby("Fahrer"):
-        sortiert = gruppe.sort_values("Zeit (s)")
-        best_dict[name] = sortiert.iloc[0]["Zeit (s)"] if not sortiert.empty else None
-        top3_dict[name] = set(sortiert["Zeit (s)"].nsmallest(3))
 
     for idx, row in df_anzeige.iterrows():
         col1, col2 = st.columns([6, 1])
