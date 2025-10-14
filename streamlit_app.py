@@ -180,9 +180,9 @@ def main():
         else:
             st.info("Mindestens 3 Zeiten pro Fahrer erforderlich.")
 
-    # ---- Letzte 10 Rundenzeiten ----
+    # ---- Letzte Rundenzeiten ----
     if not df.empty and event_filter:
-        st.subheader(f"⏱️ Letzte 20 Rundenzeiten für Event: {event_filter}")
+        st.subheader(f"⏱️ Letzte/Beste Rundenzeiten für Event: {event_filter}")
         df_event = df[df["Event"] == event_filter]
 
         # ---- Dynamische Hintergrundfarbe abhängig vom Theme ----
@@ -211,47 +211,47 @@ def main():
         df_anzeige = df_anzeige.head(anzahl)
 
 
-        # ---- Bestzeiten ermitteln ----
-        top3_dict = {}
-        best_dict = {}
-        for name, gruppe in df_event.groupby("Fahrer"):
-            sortiert = gruppe.sort_values("Zeit (s)")
-            best_dict[name] = sortiert.iloc[0]["Zeit (s)"] if not sortiert.empty else None
-            top3_dict[name] = set(sortiert["Zeit (s)"].nsmallest(3))
+    # ---- Bestzeiten ermitteln ----
+    top3_dict = {}
+    best_dict = {}
+    for name, gruppe in df_event.groupby("Fahrer"):
+        sortiert = gruppe.sort_values("Zeit (s)")
+        best_dict[name] = sortiert.iloc[0]["Zeit (s)"] if not sortiert.empty else None
+        top3_dict[name] = set(sortiert["Zeit (s)"].nsmallest(3))
 
-        for idx, row in df_anzeige.iterrows():
-            col1, col2 = st.columns([6, 1])
+    for idx, row in df_anzeige.iterrows():
+        col1, col2 = st.columns([6, 1])
 
-            # Prüfen, ob persönliche Bestzeit
-            ist_bestzeit = abs(row["Zeit (s)"] - best_dict.get(row["Fahrer"], float("inf"))) < 0.0001
-            ist_top3 = row["Zeit (s)"] in top3_dict.get(row["Fahrer"], set())
+        # Prüfen, ob persönliche Bestzeit oder Top-3
+        ist_bestzeit = abs(row["Zeit (s)"] - best_dict.get(row["Fahrer"], float("inf"))) < 0.0001
+        ist_top3 = row["Zeit (s)"] in top3_dict.get(row["Fahrer"], set())
 
-            # Stil abhängig vom Status
-            if ist_bestzeit:
-                box_style = "background-color: #fff9b1; color: black;"  # Hellgelb mit schwarzer Schrift
-                best_text = " <b>(Persönliche Bestzeit)</b>"
-            else:
-                box_style = ""
-                best_text = ""
+        # Stil abhängig vom Status
+        if ist_bestzeit:
+            box_style = "background-color: #fff9b1; color: black;"  # Hellgelb mit schwarzer Schrift
+            best_text = " <b>(Persönliche Bestzeit)</b>"
+        else:
+            box_style = ""
+            best_text = ""
 
-            # Zeitdarstellung
-            zeit_html = f"<b>{row['Zeitstr']}</b>" if ist_top3 else row["Zeitstr"]
+        # Zeitdarstellung – Sternsymbol für Top-3
+        zeit_html = f"⭐ <b>{row['Zeitstr']}</b>" if ist_top3 else row["Zeitstr"]
 
-            with col1:
-                st.markdown(
-                    f'<div class="time-box" style="{box_style}">'
-                    f'<b>{row["Fahrer"]}</b> – <i>{row["Event"]}</i><br>'
-                    f'⏱️ {zeit_html}{best_text} '
-                    f'<span style="color:gray;font-size:12px;">({row["Erfasst am"]})</span>'
-                    f'</div>',
-                    unsafe_allow_html=True
-                )
+        with col1:
+            st.markdown(
+                f'<div class="time-box" style="{box_style}">'
+                f'<b>{row["Fahrer"]}</b> – <i>{row["Event"]}</i><br>'
+                f'⏱️ {zeit_html}{best_text} '
+                f'<span style="color:gray;font-size:12px;">({row["Erfasst am"]})</span>'
+                f'</div>',
+                unsafe_allow_html=True
+            )
 
-            with col2:
-                if st.button("🗑️", key=f"del_{row.name}", help="Diesen Eintrag löschen"):
-                    df = df.drop(row.name).reset_index(drop=True)
-                    speichere_csv(df, RUNDENZEITEN_FILE_ID)
-                    st.success("✅ Eintrag gelöscht!")
+        with col2:
+            if st.button("🗑️", key=f"del_{row.name}", help="Diesen Eintrag löschen"):
+                df = df.drop(row.name).reset_index(drop=True)
+                speichere_csv(df, RUNDENZEITEN_FILE_ID)
+                st.success("✅ Eintrag gelöscht!")
 
         col_a, col_b = st.columns(2)
         with col_a:
