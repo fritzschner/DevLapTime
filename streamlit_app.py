@@ -75,11 +75,19 @@ def main():
 
     # ---------------- Eingabeformular ----------------
     with st.form("eingabe_formular"):
-        col1, col2, col3, col4 = st.columns([2, 1, 1, 1])
+        col1, col2 = st.columns([2, 3])
         fahrer = col1.text_input("Fahrername")
-        minuten = col2.number_input("Minuten", min_value=0, max_value=59, step=1, format="%d")
-        sekunden = col3.number_input("Sekunden", min_value=0, max_value=59, step=1, format="%d")
-        tausendstel = col4.number_input("Tausendstel", min_value=0, max_value=999, step=1, format="%03d")
+
+        with col2:
+            st.markdown("**Rundenzeit einstellen:**")
+            c1, c2, c3 = st.columns(3)
+            with c1:
+                minuten = st.slider("Min", 0, 9, 0)
+            with c2:
+                sekunden = st.slider("Sek", 0, 59, 0)
+            with c3:
+                tausendstel = st.slider("Tsd", 0, 999, 0)
+
         abgeschickt = st.form_submit_button("💾 Hinzufügen", use_container_width=True)
 
         if abgeschickt and fahrer and (minuten > 0 or sekunden > 0 or tausendstel > 0):
@@ -98,6 +106,7 @@ def main():
             df = pd.concat([df, neue_zeile], ignore_index=True)
             speichere_zeiten(df)
             st.rerun()
+
 
     # ---------------- Rangliste ----------------
     if not df.empty:
