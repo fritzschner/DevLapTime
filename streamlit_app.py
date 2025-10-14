@@ -102,26 +102,12 @@ def main():
     df_events = lade_csv(EVENTS_FILE_ID, ["Event"])
     vorhandene_events = sorted(df_events["Event"].dropna().unique()) if not df_events.empty else []
 
-    if "event_neu" not in st.session_state:
-        st.session_state["event_neu"] = ""
-
     # ---- Event-Auswahl ----
-    col_event1, col_event2 = st.columns([3, 2])
-    event_filter = col_event1.selectbox(
-        "🔹 Wähle ein Event",
-        options=vorhandene_events + ([st.session_state["event_neu"]] if st.session_state["event_neu"] else []),
-        index=0 if vorhandene_events else -1,
-        key="event_auswahl"
-    )
-    neues_event = col_event2.text_input("Neues Event hinzufügen", key="event_neu")
-
-    if neues_event and st.button("➕ Event speichern", use_container_width=True):
-        if neues_event not in vorhandene_events:
-            df_events = pd.concat([df_events, pd.DataFrame([{"Event": neues_event}])], ignore_index=True)
-            speichere_csv(df_events, EVENTS_FILE_ID)
-            st.success(f"✅ Event '{neues_event}' gespeichert! Bitte Seite neu laden.")
-        else:
-            st.info("Event existiert bereits.")
+    if vorhandene_events:
+        event_filter = st.selectbox("🔹 Wähle ein Event", options=vorhandene_events)
+    else:
+        st.warning("Keine Events vorhanden.")
+        st.stop()
 
     # ---- Zeiten-Eingabe ----
     st.subheader("🏎️ Neue Rundenzeit eintragen")
