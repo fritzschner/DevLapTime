@@ -186,7 +186,9 @@ def main():
 
         df_filtered = df_event[df_event["Fahrer"].isin(fahrer_filter)] if fahrer_filter else df_event
         df_anzeige = df_filtered.sort_values("Erfasst am", ascending=False) if sortierung == "Neueste Einträge zuerst" else df_filtered.sort_values("Zeit (s)")
-        df_anzeige = df_anzeige.head(10)
+        anzahl = st.slider("Anzahl angezeigter Zeiten", 5, 50, 20)
+        df_anzeige = df_anzeige.head(anzahl)
+
 
         # ---- Bestzeiten ermitteln ----
         # Für jeden Fahrer: Top 3 und beste Zeit bestimmen
