@@ -54,11 +54,10 @@ def main():
 
     # ---------------- Eingabeformular ----------------
     st.subheader("🏎️ Neue Rundenzeit eintragen")
-
     col1, col2 = st.columns([2, 2])
     fahrer = col1.text_input("Fahrername", key="fahrername")
 
-    # Eingabe der Zeit (ohne Doppelpunkte)
+    # Eingabe der Zeit ohne Trennzeichen
     raw_input = st.text_input(
         "6 Ziffern eingeben (Format: MSSTTT)",
         value=st.session_state.get("zeit_input_field", ""),
@@ -108,6 +107,8 @@ def main():
                     speichere_zeiten(df)
                     st.session_state["zeit_input_field"] = ""  # Eingabe zurücksetzen
                     st.success(f"✅ Zeit für {fahrer} gespeichert!")
+                    time.sleep(0.5)
+                    st.rerun()
             except Exception as e:
                 st.error(f"Fehler beim Verarbeiten der Eingabe: {e}")
 
@@ -142,7 +143,6 @@ def main():
     # ---------------- Letzte 10 Rundenzeiten ----------------
     if not df.empty:
         st.subheader("⏱️ Letzte 10 Rundenzeiten")
-
         fahrer_filter = st.multiselect("Filter nach Fahrer:", options=sorted(df["Fahrer"].unique()), default=None)
         sortierung = st.radio("Sortierung:", ["Neueste Einträge zuerst", "Schnellste Zeiten zuerst"], horizontal=True)
         df_filtered = df[df["Fahrer"].isin(fahrer_filter)] if fahrer_filter else df
@@ -163,6 +163,8 @@ def main():
                     df = df.drop(row.name).reset_index(drop=True)
                     speichere_zeiten(df)
                     st.success("✅ Eintrag gelöscht.")
+                    time.sleep(0.5)
+                    st.rerun()
 
         col_a, col_b = st.columns(2)
         with col_a:
@@ -185,6 +187,8 @@ def main():
                             os.remove(DATEIPFAD)
                         st.session_state["show_delete_all_confirm"] = False
                         st.success("🗑️ Alle Zeiten gelöscht.")
+                        time.sleep(0.5)
+                        st.rerun()
                 with col_no:
                     if st.button("❌ Abbrechen", key="cancel_delete_all", use_container_width=True):
                         st.session_state["show_delete_all_confirm"] = False
