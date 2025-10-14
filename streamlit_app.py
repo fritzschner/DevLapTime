@@ -29,7 +29,7 @@ def speichere_zeiten(df):
 def main():
     st.set_page_config(page_title="RaceKino Rundenzeiten", layout="wide")
 
-    # Style (unverändert)
+    # Stil (unchanged)
     st.markdown("""
     <style>
     body { background-color: #0e0e0e; color: white; }
@@ -45,26 +45,26 @@ def main():
 
     st.markdown('<div class="title">🏁 RaceKino Rundenzeiten</div>', unsafe_allow_html=True)
 
-    # lade dataframe
-    df = lade_zeiten()
-
-    # session defaults
+    # Session defaults
     if "zeit_input_field" not in st.session_state:
         st.session_state["zeit_input_field"] = ""
     if "formatted_time" not in st.session_state:
         st.session_state["formatted_time"] = ""
     if "show_delete_all_confirm" not in st.session_state:
         st.session_state["show_delete_all_confirm"] = False
+    if "action_msg" not in st.session_state:
+        st.session_state["action_msg"] = ""
 
-    # Callback für Live-Formatierung — wird bei jedem Tipp-Event ausgelöst
+    # Load dataframe (fresh)
+    df = lade_zeiten()
+
+    # ---------------- Callbacks ----------------
     def update_time():
         raw = st.session_state.get("zeit_input_field", "")
         clean = "".join(filter(str.isdigit, raw))
         formatted = ""
         if len(clean) >= 1:
-            # Minute (1 Ziffer) + colon
             formatted = clean[0] + ":"
-            # Sekunden: show partial or full
             if len(clean) == 2:
                 formatted += clean[1]
             elif len(clean) >= 3:
@@ -73,28 +73,27 @@ def main():
                     formatted += clean[3:6]
         st.session_state["formatted_time"] = formatted
 
-    # Callback für Speichern (on_click) — liest Session-State, schreibt CSV, leert Felder, rerun
     def save_time():
         raw = st.session_state.get("zeit_input_field", "").strip()
-        fahrer = st.session_state.get("fahrername", "").strip()
-        if not fahrer:
-            st.warning("Bitte Fahrername eingeben.")
+        fahrer_val = st.session_state.get("fahrername", "").strip()
+        if not fahrer_val:
+            st.session_state["action_msg"] = ("warning", "Bitte Fahrername eingeben.")
             return
         if not raw.isdigit() or len(raw) != 6:
-            st.warning("Bitte genau 6 Ziffern eingeben (Format M SS MMM).")
+            st.session_state["action_msg"] = ("warning", "Bitte genau 6 Ziffern eingeben (Format M SS MMM).")
             return
         try:
             minuten = int(raw[0])
             sekunden = int(raw[1:3])
             tausendstel = int(raw[3:6])
             if sekunden > 59 or tausendstel > 999:
-                st.error("Ungültige Zeit. Sekunden ≤ 59, Tausendstel ≤ 999.")
+                st.session_state["action_msg"] = ("error", "Ungültige Zeit. Sekunden ≤ 59, Tausendstel ≤ 999.")
                 return
             zeit_in_sek = zeit_zu_sekunden(minuten, sekunden, tausendstel)
             jetzt = datetime.now().strftime("%d.%m.%Y %H:%M:%S")
             zeitstr = f"{minuten}:{sekunden:02d}.{tausendstel:03d}"
             neue_zeile = pd.DataFrame([{
-                "Fahrer": fahrer,
+                "Fahrer": fahrer_val,
                 "Minuten": minuten,
                 "Sekunden": sekunden,
                 "Tausendstel": tausendstel,
@@ -102,41 +101,75 @@ def main():
                 "Zeitstr": zeitstr,
                 "Erfasst am": jetzt
             }])
-            # lade frische df (Vermeidung von Race-Conditions)
             df_local = lade_zeiten()
             df_local = pd.concat([df_local, neue_zeile], ignore_index=True)
             speichere_zeiten(df_local)
-            # leere inputs
+            # clear inputs
             st.session_state["zeit_input_field"] = ""
             st.session_state["formatted_time"] = ""
             st.session_state["fahrername"] = ""
-            # Feedback und refresh
-            st.success(f"✅ Zeit für {fahrer} gespeichert!")
-            time.sleep(0.6)
-            st.rerun()
+            st.session_state["action_msg"] = ("success", f"✅ Zeit für {fahrer_val} gespeichert!")
+            # no explicit rerun - Streamlit will re-render after on_click
         except Exception as e:
-            st.error(f"Fehler beim Verarbeiten der Eingabe: {e}")
+            st.session_state["action_msg"] = ("error", f"Fehler beim Verarbeiten der Eingabe: {e}")
 
-    # ---------------- Eingabefelder (ohne value=, nur key und on_change) ----------------
+    def delete_single(idx):
+        # idx is original index in file (row.name)
+        df_local = lade_zeiten()
+        if idx in df_local.index:
+            df_local = df_local.drop(index=idx).reset_index(drop=True)
+            speichere_zeiten(df_local)
+            st.session_state["action_msg"] = ("success", "✅ Eintrag gelöscht.")
+        else:
+            st.session_state["action_msg"] = ("error", "Eintrag konnte nicht gefunden werden.")
+
+    def delete_all_confirmed():
+        if os.path.exists(DATEIPFAD):
+            os.remove(DATEIPFAD)
+        st.session_state["show_delete_all_confirm"] = False
+        st.session_state["action_msg"] = ("success", "🗑️ Alle Zeiten gelöscht.")
+
+    def cancel_delete_all():
+        st.session_state["show_delete_all_confirm"] = False
+        st.session_state["action_msg"] = ("info", "Löschvorgang abgebrochen.")
+
+    # ---------------- Eingabe UI ----------------
     st.subheader("🏎️ Neue Rundenzeit eintragen")
     col1, col2 = st.columns([2, 2])
     with col1:
-        st.text_input("Fahrername", key="fahrername")  # key-backed input
+        st.text_input("Fahrername", key="fahrername")
     with col2:
-        # das wichtige: KEIN value=..., nur key=... und on_change=update_time
+        # IMPORTANT: do NOT pass value= when using key+on_change
         st.text_input("6 Ziffern eingeben (Format: M SS MMM)", max_chars=6, key="zeit_input_field", on_change=update_time)
 
-    # Live-Vorschau (wird bei jedem Zeichen aktualisiert durch update_time)
+    # show live formatted time or hint
     if st.session_state.get("formatted_time"):
         st.markdown(f"🕒 **Eingegebene Zeit:** {st.session_state['formatted_time']}")
     else:
         st.markdown("<span style='color:#888;'>Bitte Ziffern eingeben (z. B. 125512)</span>", unsafe_allow_html=True)
 
-    # Speichern-Button mit on_click -> save_time (vermeidet setitem-Kollisionen)
+    # show action message if any
+    if st.session_state.get("action_msg"):
+        typ, text = st.session_state["action_msg"]
+        if typ == "success":
+            st.success(text)
+        elif typ == "warning":
+            st.warning(text)
+        elif typ == "error":
+            st.error(text)
+        else:
+            st.info(text)
+        # optional: clear action_msg after showing so it doesn't persist forever
+        # but keep it for one render so user sees feedback
+        st.session_state["action_msg"] = None
+
+    # Save button (on_click -> callback)
     st.button("💾 Hinzufügen", use_container_width=True, on_click=save_time)
 
+    # reload df after possible modifications
+    df = lade_zeiten()
+
     # ---------------- Rangliste ----------------
-    df = lade_zeiten()  # reload nach evtl. Änderungen
     if not df.empty:
         rangliste = []
         for name, gruppe in df.groupby("Fahrer"):
@@ -159,10 +192,8 @@ def main():
     # ---------------- Anzeige letzte 10, Filter + Sort ----------------
     if not df.empty:
         st.subheader("⏱️ Letzte 10 Rundenzeiten")
-
         fahrer_filter = st.multiselect("Filter nach Fahrer:", options=sorted(df["Fahrer"].unique()), default=None)
         sortierung = st.radio("Sortierung:", ["Neueste Einträge zuerst", "Schnellste Zeiten zuerst"], horizontal=True)
-
         df_filtered = df[df["Fahrer"].isin(fahrer_filter)] if fahrer_filter else df
 
         if sortierung == "Neueste Einträge zuerst":
@@ -181,20 +212,10 @@ def main():
             with col1:
                 st.markdown(f'<div class="time-box"><b>{row["Fahrer"]}</b><br>⏱️ {row["Zeitstr"]} <span style="color:gray;font-size:12px;">({row["Erfasst am"]})</span></div>', unsafe_allow_html=True)
             with col2:
-                key = f"del_{row.name}"
-                if st.button("🗑️", key=key, help="Diesen Eintrag löschen"):
-                    # löschen über Originalindex: lade erneut, drop, speichern, rerun
-                    df_local = lade_zeiten()
-                    if row.name in df_local.index:
-                        df_local = df_local.drop(index=row.name).reset_index(drop=True)
-                        speichere_zeiten(df_local)
-                        st.success("✅ Eintrag gelöscht.")
-                        time.sleep(0.8)
-                        st.rerun()
-                    else:
-                        st.error("Eintrag konnte nicht gefunden werden.")
+                # use on_click with args to avoid sessionstate collisions
+                st.button("🗑️", key=f"del_{row.name}", on_click=delete_single, args=(row.name,))
 
-        # CSV Export + Alle löschen (2-stufig)
+        # CSV Export + All-delete (2-step)
         col_a, col_b = st.columns(2)
         with col_a:
             csv_zeiten = df.to_csv(index=False, sep=";").encode("utf-8")
@@ -208,17 +229,9 @@ def main():
                 st.warning("⚠️ Willst du wirklich alle Zeiten löschen?")
                 col_yes, col_no = st.columns(2)
                 with col_yes:
-                    if st.button("🗑️ Ja, löschen", key="delete_all_confirm", use_container_width=True):
-                        if os.path.exists(DATEIPFAD):
-                            os.remove(DATEIPFAD)
-                        st.session_state["show_delete_all_confirm"] = False
-                        st.success("🗑️ Alle Zeiten gelöscht.")
-                        time.sleep(0.8)
-                        st.rerun()
+                    st.button("🗑️ Ja, löschen", key="delete_all_confirm", on_click=delete_all_confirmed, use_container_width=True)
                 with col_no:
-                    if st.button("❌ Abbrechen", key="cancel_delete_all", use_container_width=True):
-                        st.session_state["show_delete_all_confirm"] = False
-                        st.info("Löschvorgang abgebrochen.")
+                    st.button("❌ Abbrechen", key="cancel_delete_all", on_click=cancel_delete_all, use_container_width=True)
     else:
         st.info("Noch keine Rundenzeiten erfasst.")
 
