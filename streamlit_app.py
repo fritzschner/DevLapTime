@@ -113,7 +113,7 @@ def main():
             # Feedback und refresh
             st.success(f"✅ Zeit für {fahrer} gespeichert!")
             time.sleep(0.6)
-            st.experimental_rerun()
+            st.rerun()
         except Exception as e:
             st.error(f"Fehler beim Verarbeiten der Eingabe: {e}")
 
@@ -190,7 +190,7 @@ def main():
                         speichere_zeiten(df_local)
                         st.success("✅ Eintrag gelöscht.")
                         time.sleep(0.8)
-                        st.experimental_rerun()
+                        st.rerun()
                     else:
                         st.error("Eintrag konnte nicht gefunden werden.")
 
@@ -214,7 +214,7 @@ def main():
                         st.session_state["show_delete_all_confirm"] = False
                         st.success("🗑️ Alle Zeiten gelöscht.")
                         time.sleep(0.8)
-                        st.experimental_rerun()
+                        st.rerun()
                 with col_no:
                     if st.button("❌ Abbrechen", key="cancel_delete_all", use_container_width=True):
                         st.session_state["show_delete_all_confirm"] = False
