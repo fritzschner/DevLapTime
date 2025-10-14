@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 import os
+import time
 
 DATEIPFAD = "rundenzeiten.csv"
 
@@ -18,12 +19,8 @@ def sekunden_zu_zeitstr(sekunden):
 
 def lade_zeiten():
     if not os.path.exists(DATEIPFAD):
-        return pd.DataFrame(columns=["Event", "Fahrer", "Minuten", "Sekunden", "Tausendstel", "Zeit (s)", "Zeitstr", "Erfasst am"])
-    df = pd.read_csv(DATEIPFAD, sep=";")
-    # Falls alte CSVs ohne Event existieren
-    if "Event" not in df.columns:
-        df["Event"] = "Unbekannt"
-    return df
+        return pd.DataFrame(columns=["Fahrer", "Minuten", "Sekunden", "Tausendstel", "Zeit (s)", "Zeitstr", "Erfasst am"])
+    return pd.read_csv(DATEIPFAD, sep=";")
 
 def speichere_zeiten(df):
     df.to_csv(DATEIPFAD, sep=";", index=False)
@@ -32,7 +29,7 @@ def speichere_zeiten(df):
 def main():
     st.set_page_config(page_title="RaceKino Rundenzeiten", layout="wide")
 
-    # Farbdesign
+    # Farbdesign & Überschrift
     st.markdown("""
     <style>
     body { background-color: #0e0e0e; color: white; }
@@ -59,33 +56,17 @@ def main():
     if "zeit_input_temp" not in st.session_state:
         st.session_state["zeit_input_temp"] = ""
 
-    col1, col2, col3 = st.columns([2, 2, 2])
+    col1, col2 = st.columns([2, 2])
+    fahrer = col1.text_input("Fahrername", key="fahrername")
 
-    # Event-Auswahl oder Eingabe
-    vorhandene_events = sorted(df["Event"].unique()) if not df.empty else []
-    event = col1.selectbox("Event auswählen oder neuen Namen eingeben", options=["Neues Event eingeben"] + vorhandene_events)
-    if event == "Neues Event eingeben":
-        neues_event = col1.text_input("Neues Event (frei eingeben)")
-        if neues_event:
-            event = neues_event
-
-    # Fahrername mit Auswahl bestehender Fahrer
-    vorhandene_fahrer = sorted(df["Fahrer"].unique()) if not df.empty else []
-    fahrer = col2.selectbox("Fahrer auswählen oder neuen Namen eingeben", options=["Neuer Fahrer"] + vorhandene_fahrer)
-    if fahrer == "Neuer Fahrer":
-        neuer_fahrer = col2.text_input("Neuer Fahrername (frei eingeben)")
-        if neuer_fahrer:
-            fahrer = neuer_fahrer
-
-    # Zeiteingabe
-    raw_input = col3.text_input(
+    raw_input = col2.text_input(
         "6 Ziffern eingeben (Format: MSSTTT)",
         value=st.session_state["zeit_input_temp"],
         max_chars=6,
         key="zeit_input_field"
     )
 
-    # Liveformatierung
+    # Anzeige der Eingabe
     if raw_input:
         clean = "".join(filter(str.isdigit, raw_input))
         formatted_input = ""
@@ -97,12 +78,10 @@ def main():
             formatted_input += clean[3:6]
         st.markdown(f"🕒 **Eingegebene Zeit:** {formatted_input}")
 
-    # ---------------- Speichern ----------------
+    # Speichern-Button
     if st.button("💾 Hinzufügen", use_container_width=True):
-        if not fahrer or fahrer in ["", "Neuer Fahrer"]:
+        if not fahrer:
             st.warning("Bitte Fahrername eingeben.")
-        elif not event or event in ["", "Neues Event eingeben"]:
-            st.warning("Bitte Event eingeben.")
         elif not raw_input.isdigit() or len(raw_input) != 6:
             st.warning("Bitte genau 6 Ziffern eingeben (Format M SS MMM).")
         else:
@@ -117,7 +96,6 @@ def main():
                     jetzt = datetime.now().strftime("%d.%m.%Y %H:%M:%S")
                     zeitstr = f"{minuten}:{sekunden:02d}.{tausendstel:03d}"
                     neue_zeile = pd.DataFrame([{
-                        "Event": event,
                         "Fahrer": fahrer,
                         "Minuten": minuten,
                         "Sekunden": sekunden,
@@ -128,20 +106,15 @@ def main():
                     }])
                     df = pd.concat([df, neue_zeile], ignore_index=True)
                     speichere_zeiten(df)
-                    st.session_state["zeit_input_temp"] = ""
-                    st.success(f"✅ Zeit für {fahrer} beim Event '{event}' gespeichert!")
+                    st.session_state["zeit_input_temp"] = ""  # Eingabe zurücksetzen
+                    st.success(f"✅ Zeit für {fahrer} gespeichert!")
             except Exception as e:
                 st.error(f"Fehler beim Verarbeiten der Eingabe: {e}")
 
     # ---------------- Rangliste ----------------
     if not df.empty:
-        st.subheader("🏆 Aktuelle Rangliste (Top 3 Zeiten je Event)")
-
-        event_filter = st.selectbox("Event auswählen:", options=sorted(df["Event"].unique()))
-        df_event = df[df["Event"] == event_filter]
-
         rangliste = []
-        for name, gruppe in df_event.groupby("Fahrer"):
+        for name, gruppe in df.groupby("Fahrer"):
             beste3 = gruppe["Zeit (s)"].nsmallest(3)
             if len(beste3) == 3:
                 avg = beste3.mean()
@@ -150,8 +123,8 @@ def main():
                     "Durchschnitt (Top 3)": sekunden_zu_zeitstr(avg),
                     "Wert": avg
                 })
-
         if rangliste:
+            st.subheader("🏆 Aktuelle Rangliste (Top 3 Zeiten)")
             rang_df = pd.DataFrame(rangliste).sort_values("Wert").reset_index(drop=True)
             rang_df["Platz"] = rang_df.index + 1
             for _, row in rang_df.iterrows():
@@ -170,17 +143,10 @@ def main():
     if not df.empty:
         st.subheader("⏱️ Letzte 10 Rundenzeiten")
 
-        event_filter = st.multiselect("Filter nach Event:", options=sorted(df["Event"].unique()), default=None)
         fahrer_filter = st.multiselect("Filter nach Fahrer:", options=sorted(df["Fahrer"].unique()), default=None)
         sortierung = st.radio("Sortierung:", ["Neueste Einträge zuerst", "Schnellste Zeiten zuerst"], horizontal=True)
-
-        df_filtered = df.copy()
-        if event_filter:
-            df_filtered = df_filtered[df_filtered["Event"].isin(event_filter)]
-        if fahrer_filter:
-            df_filtered = df_filtered[df_filtered["Fahrer"].isin(fahrer_filter)]
-
-        df_anzeige = df_filtered.sort_values("Erfasst am", ascending=False) if sortierung == "Neueste Einträge zuerst" else df_filtered.sort_values("Zeit (s)", ascending=True)
+        df_filtered = df[df["Fahrer"].isin(fahrer_filter)] if fahrer_filter else df
+        df_anzeige = df_filtered.sort_values("Erfasst am", ascending=False) if sortierung=="Neueste Einträge zuerst" else df_filtered.sort_values("Zeit (s)", ascending=True)
         df_anzeige = df_anzeige.head(10)
 
         for idx, row in df_anzeige.iterrows():
@@ -188,7 +154,7 @@ def main():
             with col1:
                 st.markdown(
                     f'<div class="time-box">'
-                    f'<b>{row["Fahrer"]}</b> – <i>{row["Event"]}</i><br>'
+                    f'<b>{row["Fahrer"]}</b><br>'
                     f'⏱️ {row["Zeitstr"]} <span style="color:gray;font-size:12px;">({row["Erfasst am"]})</span>'
                     f'</div>', unsafe_allow_html=True
                 )
@@ -198,7 +164,6 @@ def main():
                     speichere_zeiten(df)
                     st.success("✅ Eintrag gelöscht!")
 
-        # CSV-Download & Alles löschen
         col_a, col_b = st.columns(2)
         with col_a:
             csv_zeiten = df.to_csv(index=False, sep=";").encode("utf-8")
