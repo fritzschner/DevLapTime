@@ -35,6 +35,7 @@ def sekunden_zu_zeitstr(sekunden):
     return f"{minuten}:{sek:02d}.{tausendstel:03d}"
 
 def lade_csv(file_id, spalten):
+    """Lädt eine CSV-Datei von Google Drive und stellt sicher, dass alle Spalten vorhanden sind."""
     try:
         request = drive_service.files().get_media(fileId=file_id)
         fh = io.BytesIO()
@@ -53,6 +54,7 @@ def lade_csv(file_id, spalten):
         return pd.DataFrame(columns=spalten)
 
 def speichere_csv(df, file_id):
+    """Speichert ein DataFrame als CSV auf Google Drive."""
     try:
         fh = io.BytesIO()
         df.to_csv(fh, sep=";", index=False)
@@ -63,7 +65,7 @@ def speichere_csv(df, file_id):
         st.error(f"❌ Fehler beim Speichern: {e}")
 
 # -------------------------------------------------
-# 🔹 Streamlit-App
+# 🔹 STREAMLIT-APP
 # -------------------------------------------------
 def main():
     st.set_page_config(page_title="RaceKino Rundenzeiten", layout="wide")
@@ -81,7 +83,6 @@ def main():
     .time-box { background-color: #1b1b1b; padding: 10px; border-radius: 8px; margin-bottom: 8px; }
     </style>
     """, unsafe_allow_html=True)
-
     st.markdown('<div class="title">🏁 RaceKino Rundenzeiten</div>', unsafe_allow_html=True)
 
     # ---- Daten laden ----
@@ -151,17 +152,11 @@ def main():
 
         if rangliste:
             st.subheader(f"🏆 Rangliste für Event: {event_filter}")
-
-            # Medaillen für Top 3
             medaillen = ["🥇", "🥈", "🥉"]
-
             rang_df = pd.DataFrame(rangliste).sort_values("Wert").reset_index(drop=True)
             rang_df["Platz"] = rang_df.index + 1
-            rang_df["Medaille"] = rang_df["Platz"].apply(
-                lambda x: medaillen[x - 1] if x <= 3 else ""
-            )
+            rang_df["Medaille"] = rang_df["Platz"].apply(lambda x: medaillen[x - 1] if x <= 3 else "")
 
-            # Ausgabe mit Medaillen + farbiger Hervorhebung
             for _, row in rang_df.iterrows():
                 style = (
                     "gold" if row["Platz"] == 1
@@ -169,7 +164,6 @@ def main():
                     else "bronze" if row["Platz"] == 3
                     else ""
                 )
-
                 st.markdown(
                     f'<div class="ranking-entry {style}">'
                     f'{row["Medaille"]} <b>{row["Platz"]}. {row["Fahrer"]}</b> – '
@@ -184,9 +178,7 @@ def main():
     if not df.empty and event_filter:
         st.subheader(f"⏱️ Letzte/Beste Rundenzeiten für Event: {event_filter}")
         df_event = df[df["Event"] == event_filter]
-
-        # ---- Dynamische Hintergrundfarbe abhängig vom Theme ----
-        theme_base = st.get_option("theme.base")  # "light" oder "dark"
+        theme_base = st.get_option("theme.base")
         timebox_bg = "#f0f0f0" if theme_base == "light" else "#1b1b1b"
         timebox_color = "black" if theme_base == "light" else "white"
 
@@ -204,11 +196,9 @@ def main():
 
         fahrer_filter = st.multiselect("Filter nach Fahrer:", options=sorted(df_event["Fahrer"].unique()), default=None)
         sortierung = st.radio("Sortierung:", ["Neueste Einträge zuerst", "Schnellste Zeiten zuerst"], horizontal=True)
-
         df_filtered = df_event[df_event["Fahrer"].isin(fahrer_filter)] if fahrer_filter else df_event
         df_anzeige = df_filtered.sort_values("Erfasst am", ascending=False) if sortierung == "Neueste Einträge zuerst" else df_filtered.sort_values("Zeit (s)")
-        anzahl = st.slider("Anzahl angezeigter Zeiten", 5, 50, 10)
-        df_anzeige = df_anzeige.head(anzahl)
+        df_anzeige = df_anzeige.head(st.slider("Anzahl angezeigter Zeiten", 5, 50, 10))
 
     # ---- Bestzeiten ermitteln ----
     top3_dict = {}
@@ -220,20 +210,10 @@ def main():
 
     for idx, row in df_anzeige.iterrows():
         col1, col2 = st.columns([6, 1])
-
-        # Prüfen, ob persönliche Bestzeit oder Top-3
         ist_bestzeit = abs(row["Zeit (s)"] - best_dict.get(row["Fahrer"], float("inf"))) < 0.0001
         ist_top3 = row["Zeit (s)"] in top3_dict.get(row["Fahrer"], set())
-
-        # Stil abhängig vom Status
-        if ist_bestzeit:
-            box_style = "background-color: #fff9b1; color: black;"  # Hellgelb mit schwarzer Schrift
-            best_text = " <b>(Persönliche Bestzeit)</b>"
-        else:
-            box_style = ""
-            best_text = ""
-
-        # Zeitdarstellung – Sternsymbol für Top-3
+        box_style = "background-color: #fff9b1; color: black;" if ist_bestzeit else ""
+        best_text = " <b>(Persönliche Bestzeit)</b>" if ist_bestzeit else ""
         zeit_html = f"⭐ <b>{row['Zeitstr']}</b>" if ist_top3 else row["Zeitstr"]
 
         with col1:
@@ -245,14 +225,13 @@ def main():
                 f'</div>',
                 unsafe_allow_html=True
             )
-
         with col2:
             if st.button("🗑️", key=f"del_{row.name}", help="Diesen Eintrag löschen"):
                 df = df.drop(row.name).reset_index(drop=True)
                 speichere_csv(df, RUNDENZEITEN_FILE_ID)
                 st.success("✅ Eintrag gelöscht!")
-                
-    # --- Buttons für Download & Alle löschen außerhalb der Schleife ---
+
+    # ---- Download & Alle löschen ----
     col_a, col_b = st.columns(2)
     with col_a:
         st.download_button(
