@@ -115,6 +115,7 @@ def main():
 
     with col_button:
         st.write("")  # Abstand
+        st.write("")  # Abstand
         if st.button("💾 Hinzufügen", use_container_width=True):
             if not fahrer:
                 st.warning("Bitte Fahrername eingeben.")
@@ -234,6 +235,7 @@ def main():
                 unsafe_allow_html=True
             )
         with col2:
+            st.write("")  # Abstand
             if st.button("🗑️", key=f"del_{row.name}", help="Diesen Eintrag löschen"):
                 df = df.drop(row.name).reset_index(drop=True)
                 speichere_csv(df, RUNDENZEITEN_FILE_ID)
