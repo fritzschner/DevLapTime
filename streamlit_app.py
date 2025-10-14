@@ -186,10 +186,13 @@ def main():
             csv_zeiten = df.to_csv(index=False, sep=";").encode("utf-8")
             st.download_button("📥 Alle Zeiten als CSV", csv_zeiten, "rundenzeiten.csv", "text/csv", use_container_width=True)
         with col_b:
-            if st.button("🗑️ Alle Zeiten löschen", use_container_width=True, type="secondary"):
-                if st.confirm("⚠️ Willst du wirklich alle Zeiten löschen? Dies kann nicht rückgängig gemacht werden."):
-                    os.remove(DATEIPFAD)
-                    st.error("🗑️ Alle Zeiten gelöscht.")
+            st.markdown("⚠️ Willst du wirklich alle Zeiten löschen?")
+            sicherheit = st.checkbox("Ja, ich möchte alle Zeiten löschen")
+            if sicherheit:
+                if st.button("🗑️ Alle Zeiten endgültig löschen", use_container_width=True):
+                    if os.path.exists(DATEIPFAD):
+                        os.remove(DATEIPFAD)
+                    st.success("🗑️ Alle Zeiten gelöscht.")
                     time.sleep(1)
                     st.rerun()
     else:
