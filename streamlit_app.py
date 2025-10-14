@@ -255,7 +255,7 @@ def main():
 
         col_a, col_b = st.columns(2)
         with col_a:
-            st.download_button("📥 Alle Zeiten als CSV", df_event.to_csv(index=False, sep=";").encode("utf-8"), "rundenzeiten.csv", "text/csv", use_container_width=True)
+            st.download_button("📥 Alle Zeiten als CSV", df_event.to_csv(index=False, sep=";").encode("utf-8"), "rundenzeiten.csv", "text/csv", use_container_width=True, key="download_csv_button")
 
         with col_b:
             if st.session_state.get("show_delete_all_confirm") is None:
