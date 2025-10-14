@@ -31,21 +31,21 @@ def main():
 
     # Design
     st.markdown("""
-        <style>
-        body { background-color: #0e0e0e; color: white; }
-        .block-container { max-width: 1100px; margin: auto; }
-        .title {
-            background-color: #c20000; color: white; text-align: center;
-            padding: 15px; border-radius: 12px; font-size: 32px; font-weight: bold; margin-bottom: 25px;
-        }
-        .ranking-entry { padding: 8px; margin-bottom: 4px; border-radius: 8px; }
-        .gold { background-color: #FFD70033; }
-        .silver { background-color: #C0C0C033; }
-        .bronze { background-color: #CD7F3233; }
-        .time-box {
-            background-color: #1b1b1b; padding: 10px; border-radius: 8px; margin-bottom: 8px;
-        }
-        </style>
+    <style>
+    body { background-color: #0e0e0e; color: white; }
+    .block-container { max-width: 1100px; margin: auto; }
+    .title {
+        background-color: #c20000; color: white; text-align: center;
+        padding: 15px; border-radius: 12px; font-size: 32px; font-weight: bold; margin-bottom: 25px;
+    }
+    .ranking-entry { padding: 8px; margin-bottom: 4px; border-radius: 8px; }
+    .gold { background-color: #FFD70033; }
+    .silver { background-color: #C0C0C033; }
+    .bronze { background-color: #CD7F3233; }
+    .time-box {
+        background-color: #1b1b1b; padding: 10px; border-radius: 8px; margin-bottom: 8px;
+    }
+    </style>
     """, unsafe_allow_html=True)
 
     st.markdown('<div class="title">🏁 RaceKino Rundenzeiten</div>', unsafe_allow_html=True)
@@ -54,30 +54,38 @@ def main():
 
     # ---------------- Eingabeformular ----------------
     st.subheader("🏎️ Neue Rundenzeit eintragen")
+
     col1, col2 = st.columns([2, 2])
     fahrer = col1.text_input("Fahrername", key="fahrername")
 
-    # Eingabe der Zeit ohne Trennzeichen
-    raw_input = st.text_input(
-        "6 Ziffern eingeben (Format: MSSTTT)",
-        value=st.session_state.get("zeit_input_field", ""),
-        max_chars=6,
-        key="zeit_input"
-    )
+    # Initialisiere session_state Variablen
+    if "zeit_input_field" not in st.session_state:
+        st.session_state["zeit_input_field"] = ""
+    if "zeit_display" not in st.session_state:
+        st.session_state["zeit_display"] = "0:00.000"
 
-    # Live-Formatierung mit Platzhaltern
-    formatted_input = ""
-    if raw_input:
-        clean = "".join(filter(str.isdigit, raw_input))
+    # Funktion für Live-Formatierung
+    def update_zeit_display():
+        raw = st.session_state["zeit_input_field"]
+        clean = "".join(filter(str.isdigit, raw))
         minuten = clean[0] if len(clean) >= 1 else "0"
         sekunden = clean[1:3].ljust(2, "0") if len(clean) >= 2 else "00"
         tausendstel = clean[3:6].ljust(3, "0") if len(clean) >= 4 else "000"
-        formatted_input = f"{minuten}:{sekunden}.{tausendstel}"
-        st.markdown(f"🕒 **Eingegebene Zeit:** {formatted_input}")
+        st.session_state["zeit_display"] = f"{minuten}:{sekunden}.{tausendstel}"
 
+    # Eingabefeld mit Live-Update
+    st.text_input(
+        "6 Ziffern eingeben (Format: MSSTTT)",
+        key="zeit_input_field",
+        max_chars=6,
+        on_change=update_zeit_display
+    )
+
+    st.markdown(f"🕒 **Eingegebene Zeit:** {st.session_state['zeit_display']}")
 
     # Speichern-Button
     if st.button("💾 Hinzufügen", use_container_width=True):
+        raw_input = st.session_state["zeit_input_field"]
         if not fahrer:
             st.warning("Bitte Fahrername eingeben.")
         elif not raw_input.isdigit() or len(raw_input) != 6:
@@ -105,9 +113,9 @@ def main():
                     df = pd.concat([df, neue_zeile], ignore_index=True)
                     speichere_zeiten(df)
                     st.session_state["zeit_input_field"] = ""  # Eingabe zurücksetzen
+                    st.session_state["zeit_display"] = "0:00.000"
                     st.success(f"✅ Zeit für {fahrer} gespeichert!")
                     time.sleep(0.5)
-                    st.rerun()
             except Exception as e:
                 st.error(f"Fehler beim Verarbeiten der Eingabe: {e}")
 
@@ -118,11 +126,7 @@ def main():
             beste3 = gruppe["Zeit (s)"].nsmallest(3)
             if len(beste3) == 3:
                 avg = beste3.mean()
-                rangliste.append({
-                    "Fahrer": name,
-                    "Durchschnitt (Top 3)": sekunden_zu_zeitstr(avg),
-                    "Wert": avg
-                })
+                rangliste.append({"Fahrer": name, "Durchschnitt (Top 3)": sekunden_zu_zeitstr(avg), "Wert": avg})
         if rangliste:
             st.subheader("🏆 Aktuelle Rangliste (Top 3 Zeiten)")
             rang_df = pd.DataFrame(rangliste).sort_values("Wert").reset_index(drop=True)
@@ -145,11 +149,11 @@ def main():
         fahrer_filter = st.multiselect("Filter nach Fahrer:", options=sorted(df["Fahrer"].unique()), default=None)
         sortierung = st.radio("Sortierung:", ["Neueste Einträge zuerst", "Schnellste Zeiten zuerst"], horizontal=True)
         df_filtered = df[df["Fahrer"].isin(fahrer_filter)] if fahrer_filter else df
-        df_anzeige = df_filtered.sort_values("Erfasst am", ascending=False) if sortierung == "Neueste Einträge zuerst" else df_filtered.sort_values("Zeit (s)", ascending=True)
+        df_anzeige = df_filtered.sort_values("Erfasst am", ascending=False) if sortierung=="Neueste Einträge zuerst" else df_filtered.sort_values("Zeit (s)", ascending=True)
         df_anzeige = df_anzeige.head(10)
 
         for idx, row in df_anzeige.iterrows():
-            col1, col2 = st.columns([6, 1])
+            col1, col2 = st.columns([6,1])
             with col1:
                 st.markdown(
                     f'<div class="time-box">'
@@ -163,7 +167,6 @@ def main():
                     speichere_zeiten(df)
                     st.success("✅ Eintrag gelöscht.")
                     time.sleep(0.5)
-                    st.rerun()
 
         col_a, col_b = st.columns(2)
         with col_a:
@@ -187,7 +190,6 @@ def main():
                         st.session_state["show_delete_all_confirm"] = False
                         st.success("🗑️ Alle Zeiten gelöscht.")
                         time.sleep(0.5)
-                        st.rerun()
                 with col_no:
                     if st.button("❌ Abbrechen", key="cancel_delete_all", use_container_width=True):
                         st.session_state["show_delete_all_confirm"] = False
