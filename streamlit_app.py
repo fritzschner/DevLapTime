@@ -61,34 +61,30 @@ def main():
     col1, col2 = st.columns([2, 2])
     fahrer = col1.text_input("Fahrername", key="fahrername")
 
-    # --- Zwischenspeicher für die Eingabe ---
+    # Eingabe der Zeit (ohne Doppelpunkte)
     if "zeit_input_temp" not in st.session_state:
         st.session_state["zeit_input_temp"] = ""
 
-    def update_zeit_display():
-        st.session_state["zeit_input_temp"] = st.session_state["zeit_input_field"]
-
-    raw_input = st.text_input(
+    raw_input = col2.text_input(
         "6 Ziffern eingeben (Format: MSSTTT)",
         value=st.session_state["zeit_input_temp"],
         max_chars=6,
-        key="zeit_input_field",
-        on_change=update_zeit_display
+        key="zeit_input_field"
     )
 
-    # --- Live-Formatierung ---
+    # Live-Formatierung
     formatted_input = ""
-    clean = "".join(filter(str.isdigit, raw_input))
-    if len(clean) >= 1:
-        formatted_input += clean[0] + ":"
-    if len(clean) >= 3:
-        formatted_input += clean[1:3] + "."
-    if len(clean) > 3:
-        formatted_input += clean[3:6]
-    if formatted_input:
+    if raw_input:
+        clean = "".join(filter(str.isdigit, raw_input))
+        if len(clean) >= 1:
+            formatted_input += clean[0] + ":"
+        if len(clean) >= 3:
+            formatted_input += clean[1:3] + "."
+        if len(clean) > 3:
+            formatted_input += clean[3:6]
         st.markdown(f"🕒 **Eingegebene Zeit:** {formatted_input}")
 
-    # --- Speichern-Button ---
+    # Speichern-Button
     if st.button("💾 Hinzufügen", use_container_width=True):
         if not fahrer:
             st.warning("Bitte Fahrername eingeben.")
@@ -116,11 +112,11 @@ def main():
                     }])
                     df = pd.concat([df, neue_zeile], ignore_index=True)
                     speichere_zeiten(df)
-                    st.session_state["zeit_input_temp"] = ""
+                    st.session_state["zeit_input_temp"] = ""  # Eingabe zurücksetzen
                     st.success(f"✅ Zeit für {fahrer} gespeichert!")
+
             except Exception as e:
                 st.error(f"Fehler beim Verarbeiten der Eingabe: {e}")
-
 
     # ---------------- Rangliste ----------------
     if not df.empty:
@@ -173,7 +169,9 @@ def main():
                 if st.button("🗑️", key=f"del_{row.name}", help="Diesen Eintrag löschen"):
                     df = df.drop(row.name).reset_index(drop=True)
                     speichere_zeiten(df)
-                    st.success("✅ Eintrag gelöscht!")
+                    st.success("✅ Eintrag gelöscht.")
+                    time.sleep(0.5)
+                    st.rerun()
 
         col_a, col_b = st.columns(2)
         with col_a:
@@ -196,6 +194,8 @@ def main():
                             os.remove(DATEIPFAD)
                         st.session_state["show_delete_all_confirm"] = False
                         st.success("🗑️ Alle Zeiten gelöscht.")
+                        time.sleep(0.5)
+                        st.rerun()
                 with col_no:
                     if st.button("❌ Abbrechen", key="cancel_delete_all", use_container_width=True):
                         st.session_state["show_delete_all_confirm"] = False
