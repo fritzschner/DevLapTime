@@ -116,10 +116,11 @@ def main():
                     }])
                     df = pd.concat([df, neue_zeile], ignore_index=True)
                     speichere_zeiten(df)
-
-                    # Eingabefeld leeren
                     st.session_state["zeit_input_temp"] = ""
                     st.success(f"✅ Zeit für {fahrer} gespeichert!")
+            except Exception as e:
+                st.error(f"Fehler beim Verarbeiten der Eingabe: {e}")
+
 
     # ---------------- Rangliste ----------------
     if not df.empty:
