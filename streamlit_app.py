@@ -189,7 +189,7 @@ def main():
         else:
             df_anzeige = df.sort_values("Zeit (s)", ascending=True)
 
-        df_anzeige = df_anzeige.head(10).reset_index(drop=True)
+        df_anzeige = df_anzeige.head(10)  # die letzten 10 für die Anzeige
 
         for idx, row in df_anzeige.iterrows():
             col1, col2 = st.columns([6, 1])
@@ -202,7 +202,7 @@ def main():
                     unsafe_allow_html=True,
                 )
             with col2:
-                if st.button("🗑️", key=f"del_{idx}", help="Diesen Eintrag löschen"):
+                if st.button("🗑️", key=f"del_{row.name}", help="Diesen Eintrag löschen"):
                     df = df.drop(row.name).reset_index(drop=True)
                     speichere_zeiten(df)
                     st.success("✅ Eintrag gelöscht.")
