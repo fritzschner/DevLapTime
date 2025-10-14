@@ -81,42 +81,37 @@ def main():
 
         with col2:
             st.markdown("**Rundenzeit eingeben (ohne Trennzeichen):**")
-            zeit_input = st.text_input("z. B. 125512 → 1:25.512 oder 059123 → 0:59.123", max_chars=6)
+            raw_input = st.text_input("z. B. 125512 → 1:25.512 oder 059123 → 0:59.123", max_chars=6)
 
-            # Live-Vorschau der interpretierten Zeit
-            if zeit_input.isdigit() and len(zeit_input) == 6:
-                minuten = int(zeit_input[0])
-                sekunden = int(zeit_input[1:3])
-                tausendstel = int(zeit_input[3:6])
-                if sekunden <= 59 and tausendstel <= 999:
-                    st.markdown(f"🕒 **Eingegebene Zeit:** {minuten}:{sekunden:02d}.{tausendstel:03d}")
-                else:
-                    st.markdown("<span style='color:#ff6666;'>❌ Ungültige Kombination (Sekunden ≤ 59, Tausendstel ≤ 999)</span>", unsafe_allow_html=True)
-            elif len(zeit_input) > 0:
-                st.markdown("<span style='color:#888;'>Bitte genau 6 Ziffern eingeben (Format M SS MMM)</span>", unsafe_allow_html=True)
+            # Automatische Formatierung für Anzeige
+            formatted_input = ""
+            if raw_input.isdigit():
+                if len(raw_input) >= 1:
+                    formatted_input += raw_input[0] + ":"
+                if len(raw_input) >= 3:
+                    formatted_input += raw_input[1:3] + "."
+                if len(raw_input) >= 4:
+                    formatted_input += raw_input[3:6]
+                st.markdown(f"🕒 **Eingegebene Zeit:** {formatted_input}")
 
         abgeschickt = st.form_submit_button("💾 Hinzufügen", use_container_width=True)
 
         if abgeschickt:
             if not fahrer:
                 st.warning("Bitte Fahrername eingeben.")
-            elif not zeit_input.isdigit():
-                st.warning("Bitte nur Zahlen eingeben (z. B. 125512).")
-            elif len(zeit_input) != 6:
+            elif not raw_input.isdigit() or len(raw_input) != 6:
                 st.warning("Bitte genau 6 Ziffern eingeben (Format M SS MMM).")
             else:
                 try:
-                    minuten = int(zeit_input[0])
-                    sekunden = int(zeit_input[1:3])
-                    tausendstel = int(zeit_input[3:6])
-
+                    minuten = int(raw_input[0])
+                    sekunden = int(raw_input[1:3])
+                    tausendstel = int(raw_input[3:6])
                     if sekunden > 59 or tausendstel > 999:
                         st.error("Ungültige Zeit. Sekunden ≤ 59, Tausendstel ≤ 999.")
                     else:
                         zeit_in_sek = zeit_zu_sekunden(minuten, sekunden, tausendstel)
                         jetzt = datetime.now().strftime("%d.%m.%Y %H:%M:%S")
                         zeitstr = f"{minuten}:{sekunden:02d}.{tausendstel:03d}"
-
                         neue_zeile = pd.DataFrame([{
                             "Fahrer": fahrer,
                             "Minuten": minuten,
@@ -126,11 +121,9 @@ def main():
                             "Zeitstr": zeitstr,
                             "Erfasst am": jetzt
                         }])
-
                         df = pd.concat([df, neue_zeile], ignore_index=True)
                         speichere_zeiten(df)
                         st.rerun()
-
                 except Exception as e:
                     st.error(f"Fehler beim Verarbeiten der Eingabe: {e}")
 
@@ -146,71 +139,39 @@ def main():
                     "Durchschnitt (Top 3)": sekunden_zu_zeitstr(avg),
                     "Wert": avg
                 })
-
         if rangliste:
             st.subheader("🏆 Aktuelle Rangliste (Top 3 Zeiten)")
             rang_df = pd.DataFrame(rangliste).sort_values("Wert").reset_index(drop=True)
             rang_df["Platz"] = rang_df.index + 1
-
             for _, row in rang_df.iterrows():
-                style = ""
-                if row["Platz"] == 1:
-                    style = "gold"
-                elif row["Platz"] == 2:
-                    style = "silver"
-                elif row["Platz"] == 3:
-                    style = "bronze"
-
+                style = "gold" if row["Platz"] == 1 else "silver" if row["Platz"] == 2 else "bronze" if row["Platz"] == 3 else ""
                 st.markdown(
                     f'<div class="ranking-entry {style}">'
                     f'<b>{row["Platz"]}. {row["Fahrer"]}</b> – {row["Durchschnitt (Top 3)"]}'
-                    f'</div>',
-                    unsafe_allow_html=True,
+                    f'</div>', unsafe_allow_html=True
                 )
-
             csv_rang = rang_df[["Platz", "Fahrer", "Durchschnitt (Top 3)"]].to_csv(index=False, sep=";").encode("utf-8")
             st.download_button("📥 Rangliste als CSV", csv_rang, "rangliste.csv", "text/csv", use_container_width=True)
-
         else:
             st.info("Mindestens ein Fahrer braucht 3 Zeiten für die Rangliste.")
 
     # ---------------- Filter und letzte Zeiten ----------------
     if not df.empty:
         st.subheader("⏱️ Letzte 10 Rundenzeiten")
-
-        # Fahrer-Filter
-        fahrer_filter = st.multiselect(
-            "Filter nach Fahrer:",
-            options=sorted(df["Fahrer"].unique()),
-            default=None
-        )
-
-        # Sortierung
-        sortierung = st.radio(
-            "Sortierung:",
-            ["Neueste Einträge zuerst", "Schnellste Zeiten zuerst"],
-            horizontal=True,
-        )
-
-        # Gefiltertes DataFrame
+        fahrer_filter = st.multiselect("Filter nach Fahrer:", options=sorted(df["Fahrer"].unique()), default=None)
+        sortierung = st.radio("Sortierung:", ["Neueste Einträge zuerst", "Schnellste Zeiten zuerst"], horizontal=True)
         df_filtered = df[df["Fahrer"].isin(fahrer_filter)] if fahrer_filter else df
-
-        if sortierung == "Neueste Einträge zuerst":
-            df_anzeige = df_filtered.sort_values("Erfasst am", ascending=False)
-        else:
-            df_anzeige = df_filtered.sort_values("Zeit (s)", ascending=True)
-
-        df_anzeige = df_anzeige.head(10)  # letzte 10 Einträge
+        df_anzeige = df_filtered.sort_values("Erfasst am", ascending=False) if sortierung=="Neueste Einträge zuerst" else df_filtered.sort_values("Zeit (s)", ascending=True)
+        df_anzeige = df_anzeige.head(10)
 
         for idx, row in df_anzeige.iterrows():
-            col1, col2 = st.columns([6, 1])
+            col1, col2 = st.columns([6,1])
             with col1:
                 st.markdown(
                     f'<div class="time-box">'
                     f'<b>{row["Fahrer"]}</b><br>'
                     f'⏱️ {row["Zeitstr"]} <span style="color:gray;font-size:12px;">({row["Erfasst am"]})</span>'
-                    f'</div>',
-                    unsafe_allow_html=True,
+                    f'</div>', unsafe_allow_html=True
                 )
             with col2:
                 if st.button("🗑️", key=f"del_{row.name}", help="Diesen Eintrag löschen"):
@@ -220,17 +181,17 @@ def main():
                     time.sleep(1)
                     st.rerun()
 
-        # CSV-Export + Alle löschen
         col_a, col_b = st.columns(2)
         with col_a:
             csv_zeiten = df.to_csv(index=False, sep=";").encode("utf-8")
             st.download_button("📥 Alle Zeiten als CSV", csv_zeiten, "rundenzeiten.csv", "text/csv", use_container_width=True)
         with col_b:
             if st.button("🗑️ Alle Zeiten löschen", use_container_width=True, type="secondary"):
-                os.remove(DATEIPFAD)
-                st.error("🗑️ Alle Zeiten gelöscht.")
-                time.sleep(1)
-                st.rerun()
+                if st.confirm("⚠️ Willst du wirklich alle Zeiten löschen? Dies kann nicht rückgängig gemacht werden."):
+                    os.remove(DATEIPFAD)
+                    st.error("🗑️ Alle Zeiten gelöscht.")
+                    time.sleep(1)
+                    st.rerun()
     else:
         st.info("Noch keine Rundenzeiten erfasst.")
 
