@@ -252,31 +252,39 @@ def main():
                 df = df.drop(row.name).reset_index(drop=True)
                 speichere_csv(df, RUNDENZEITEN_FILE_ID)
                 st.success("✅ Eintrag gelöscht!")
+                
+    # --- Buttons für Download & Alle löschen außerhalb der Schleife ---
+    col_a, col_b = st.columns(2)
+    with col_a:
+        st.download_button(
+            "📥 Alle Zeiten als CSV",
+            df_event.to_csv(index=False, sep=";").encode("utf-8"),
+            "rundenzeiten.csv",
+            "text/csv",
+            use_container_width=True,
+            key="download_csv_button"
+        )
 
-        col_a, col_b = st.columns(2)
-        with col_a:
-            st.download_button("📥 Alle Zeiten als CSV", df_event.to_csv(index=False, sep=";").encode("utf-8"), "rundenzeiten.csv", "text/csv", use_container_width=True, key="download_csv_button")
-
-        with col_b:
-            if st.session_state.get("show_delete_all_confirm") is None:
-                st.session_state["show_delete_all_confirm"] = False
-            if not st.session_state["show_delete_all_confirm"]:
-                if st.button("🗑️ Alle Rundenzeiten für Event löschen", use_container_width=True):
-                    st.session_state["show_delete_all_confirm"] = True
-            else:
-                st.warning("⚠️ Willst du wirklich alle Zeiten für dieses Event löschen?")
-                col_yes, col_no = st.columns(2)
-                with col_yes:
-                    if st.button("🗑️ Ja, löschen", key="delete_all_confirm", use_container_width=True):
-                        df = df[df["Event"] != event_filter]
-                        speichere_csv(df, RUNDENZEITEN_FILE_ID)
-                        st.session_state["show_delete_all_confirm"] = False
-                        st.success("🗑️ Alle Zeiten für Event gelöscht.")
-                        st.experimental_rerun()
-                with col_no:
-                    if st.button("❌ Abbrechen", key="cancel_delete_all", use_container_width=True):
-                        st.session_state["show_delete_all_confirm"] = False
-                        st.info("Löschvorgang abgebrochen.")
+    with col_b:
+        if st.session_state.get("show_delete_all_confirm") is None:
+            st.session_state["show_delete_all_confirm"] = False
+        if not st.session_state["show_delete_all_confirm"]:
+            if st.button("🗑️ Alle Rundenzeiten für Event löschen", use_container_width=True):
+                st.session_state["show_delete_all_confirm"] = True
+        else:
+            st.warning("⚠️ Willst du wirklich alle Zeiten für dieses Event löschen?")
+            col_yes, col_no = st.columns(2)
+            with col_yes:
+                if st.button("🗑️ Ja, löschen", key="delete_all_confirm", use_container_width=True):
+                    df = df[df["Event"] != event_filter]
+                    speichere_csv(df, RUNDENZEITEN_FILE_ID)
+                    st.session_state["show_delete_all_confirm"] = False
+                    st.success("🗑️ Alle Zeiten für Event gelöscht.")
+                    st.experimental_rerun()
+            with col_no:
+                if st.button("❌ Abbrechen", key="cancel_delete_all", use_container_width=True):
+                    st.session_state["show_delete_all_confirm"] = False
+                    st.info("Löschvorgang abgebrochen.")
 
 # -------------------------------------------------
 if __name__ == "__main__":
