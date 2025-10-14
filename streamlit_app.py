@@ -1,11 +1,13 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime
+import pytz
 import os
 import io
 from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseDownload, MediaIoBaseUpload
+
 
 # -------------------------------------------------
 # 🔹 KONFIGURATION
@@ -19,6 +21,12 @@ drive_service = build("drive", "v3", credentials=creds)
 # Diese beiden IDs musst du nachher anpassen:
 RUNDENZEITEN_FILE_ID = "1bzYUWbUPjyY_IJMjmzWp7J1_Ud2xyyji"
 EVENTS_FILE_ID = "11WeEQCBk2tJ7jobGymiSTNNHWgdxV6Zv"
+
+# Zeitzone definieren
+MEZ = pytz.timezone("Europe/Berlin")
+
+# Zeitpunkt in MEZ
+jetzt = datetime.now(MEZ).strftime("%d.%m.%Y %H:%M:%S")
 
 # -------------------------------------------------
 # 🔹 Hilfsfunktionen
