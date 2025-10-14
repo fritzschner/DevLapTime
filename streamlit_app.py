@@ -57,8 +57,23 @@ def main():
         st.session_state["zeit_input_temp"] = ""
 
     col1, col2 = st.columns([2, 2])
-    fahrer = col1.text_input("Fahrername", key="fahrername")
 
+    # --- Fahrernamenselektion mit freier Eingabe ---
+    vorhandene_fahrer = sorted(df["Fahrer"].unique()) if not df.empty else []
+    fahrer_option = col1.selectbox(
+        "Fahrername auswählen",
+        options=[""] + vorhandene_fahrer,
+        index=0,
+        key="fahrer_select"
+    )
+    fahrer_input = col1.text_input(
+        "Oder neuen Fahrername eingeben",
+        value="",
+        key="fahrer_input"
+    )
+    fahrer = fahrer_input if fahrer_input else fahrer_option
+
+    # --- Zeiteneingabe ---
     raw_input = col2.text_input(
         "6 Ziffern eingeben (Format: MSSTTT)",
         value=st.session_state["zeit_input_temp"],
@@ -66,7 +81,7 @@ def main():
         key="zeit_input_field"
     )
 
-    # Anzeige der Eingabe
+    # Live-Formatierung der Eingabe
     if raw_input:
         clean = "".join(filter(str.isdigit, raw_input))
         formatted_input = ""
@@ -142,7 +157,6 @@ def main():
     # ---------------- Letzte 10 Rundenzeiten ----------------
     if not df.empty:
         st.subheader("⏱️ Letzte 10 Rundenzeiten")
-
         fahrer_filter = st.multiselect("Filter nach Fahrer:", options=sorted(df["Fahrer"].unique()), default=None)
         sortierung = st.radio("Sortierung:", ["Neueste Einträge zuerst", "Schnellste Zeiten zuerst"], horizontal=True)
         df_filtered = df[df["Fahrer"].isin(fahrer_filter)] if fahrer_filter else df
