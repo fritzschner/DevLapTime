@@ -80,8 +80,8 @@ def main():
         fahrer = col1.text_input("Fahrername")
 
         with col2:
-            st.markdown("**Rundenzeit eingeben (ohne Trennzeichen):**")
-            zeit_input = st.text_input("z. B. 125512 → 1:25.512 oder 059123 → 0:59.123", max_chars=6)
+            st.markdown("**Rundenzeit eingeben:**")
+            zeit_input = st.text_input("Format m:sss:ttt (ohne Trennzeichen)", max_chars=6)
 
             # Live-Vorschau der interpretierten Zeit
             if zeit_input.isdigit() and len(zeit_input) == 6:
