@@ -224,12 +224,12 @@ def main():
         best_text = " <b>(Persönliche Bestzeit)</b>" if ist_bestzeit else ""
         zeit_html = f"⭐ <b>{row['Zeitstr']}</b>" if ist_top3 else row["Zeitstr"]
 
-        col1, col2 = st.columns([4, 1])
+        col1, col2 = st.columns([6, 1])
         with col1:
             st.markdown(
                 f'<div class="time-box" style="{box_style}">'
-                f'<b>{row["Fahrer"]}</b> – <i>{row["Event"]}</i><br>'
-                f'⏱️ {zeit_html}{best_text} '
+                f'<b>{row["Fahrer"]}</b>   –   <i>{row["Event"]}</i><br>'
+                f'⏱️ {zeit_html}{best_text} <br>'
                 f'<span style="color:gray;font-size:12px;">({row["Erfasst am"]})</span>'
                 f'</div>',
                 unsafe_allow_html=True
