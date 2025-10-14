@@ -221,7 +221,7 @@ def main():
         ist_bestzeit = abs(row["Zeit (s)"] - best_dict.get(row["Fahrer"], float("inf"))) < 0.0001
         ist_top3 = row["Zeit (s)"] in top3_dict.get(row["Fahrer"], set())
         box_style = "background-color: #fff9b1; color: black;" if ist_bestzeit else ""
-        best_text = " <b>(Persönliche Bestzeit)</b>" if ist_bestzeit else ""
+        best_text = " <b>Persönliche Bestzeit</b>" if ist_bestzeit else ""
         zeit_html = f"⭐ <b>{row['Zeitstr']}</b>" if ist_top3 else row["Zeitstr"]
 
         col1, col2 = st.columns([6, 1])
@@ -229,8 +229,8 @@ def main():
             st.markdown(
                 f'<div class="time-box" style="{box_style}">'
                 f'<b>{row["Fahrer"]}</b>   –   <i>{row["Event"]}</i><br>'
-                f'⏱️ {zeit_html}{best_text} <br>'
-                f'<span style="color:gray;font-size:12px;">({row["Erfasst am"]})</span>'
+                f'⏱️ {zeit_html}<br>'
+                f'<span style="color:gray;font-size:12px;">({row["Erfasst am"]}) {best_text}</span>'
                 f'</div>',
                 unsafe_allow_html=True
             )
