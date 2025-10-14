@@ -74,58 +74,66 @@ def main():
 
     df = lade_zeiten()
 
-    # ---------------- Eingabeformular ----------------
+    # Eingabeformular
+    if "raw_input" not in st.session_state:
+        st.session_state["raw_input"] = ""
+
     with st.form("eingabe_formular"):
         col1, col2 = st.columns([2, 2])
         fahrer = col1.text_input("Fahrername")
-
         with col2:
             st.markdown("**Rundenzeit eingeben:**")
-            raw_input = st.text_input("6 Ziffern eingeben (Format: MSSTTT):", max_chars=6)
+            st.session_state["raw_input"] = st.text_input(
+                "6 Ziffern eingeben (MSSTTT)", 
+                value=st.session_state["raw_input"], 
+                max_chars=6, 
+                key="zeit_input"
+            )
 
-            # Automatische Formatierung für Anzeige
-            formatted_input = ""
-            if raw_input.isdigit():
-                if len(raw_input) >= 1:
-                    formatted_input += raw_input[0] + ":"
-                if len(raw_input) >= 3:
-                    formatted_input += raw_input[1:3] + "."
-                if len(raw_input) >= 4:
-                    formatted_input += raw_input[3:6]
-                st.markdown(f"🕒 **Eingegebene Zeit:** {formatted_input}")
+            # Dynamische Anzeige
+            raw = st.session_state["raw_input"]
+            formatted = ""
+            if raw.isdigit():
+                if len(raw) >= 1:
+                    formatted += raw[0] + ":"
+                if len(raw) >= 3:
+                    formatted += raw[1:3] + "."
+                elif len(raw) > 1:
+                    formatted += raw[1:]
+                if len(raw) >= 4:
+                    formatted += raw[3:6]
+            st.markdown(f"🕒 **Eingegebene Zeit:** {formatted}")
 
         abgeschickt = st.form_submit_button("💾 Hinzufügen", use_container_width=True)
 
         if abgeschickt:
             if not fahrer:
                 st.warning("Bitte Fahrername eingeben.")
-            elif not raw_input.isdigit() or len(raw_input) != 6:
-                st.warning("Bitte genau 6 Ziffern eingeben (Format M SS MMM).")
+            elif not raw.isdigit() or len(raw) != 6:
+                st.warning("Bitte genau 6 Ziffern eingeben (MSSMMM).")
             else:
-                try:
-                    minuten = int(raw_input[0])
-                    sekunden = int(raw_input[1:3])
-                    tausendstel = int(raw_input[3:6])
-                    if sekunden > 59 or tausendstel > 999:
-                        st.error("Ungültige Zeit. Sekunden ≤ 59, Tausendstel ≤ 999.")
-                    else:
-                        zeit_in_sek = zeit_zu_sekunden(minuten, sekunden, tausendstel)
-                        jetzt = datetime.now().strftime("%d.%m.%Y %H:%M:%S")
-                        zeitstr = f"{minuten}:{sekunden:02d}.{tausendstel:03d}"
-                        neue_zeile = pd.DataFrame([{
-                            "Fahrer": fahrer,
-                            "Minuten": minuten,
-                            "Sekunden": sekunden,
-                            "Tausendstel": tausendstel,
-                            "Zeit (s)": zeit_in_sek,
-                            "Zeitstr": zeitstr,
-                            "Erfasst am": jetzt
-                        }])
-                        df = pd.concat([df, neue_zeile], ignore_index=True)
-                        speichere_zeiten(df)
-                        st.rerun()
-                except Exception as e:
-                    st.error(f"Fehler beim Verarbeiten der Eingabe: {e}")
+                minuten = int(raw[0])
+                sekunden = int(raw[1:3])
+                tausendstel = int(raw[3:6])
+                if sekunden > 59 or tausendstel > 999:
+                    st.error("Ungültige Zeit. Sekunden ≤ 59, Tausendstel ≤ 999.")
+                else:
+                    zeit_in_sek = zeit_zu_sekunden(minuten, sekunden, tausendstel)
+                    jetzt = datetime.now().strftime("%d.%m.%Y %H:%M:%S")
+                    zeitstr = f"{minuten}:{sekunden:02d}.{tausendstel:03d}"
+                    neue_zeile = pd.DataFrame([{
+                        "Fahrer": fahrer,
+                        "Minuten": minuten,
+                        "Sekunden": sekunden,
+                        "Tausendstel": tausendstel,
+                        "Zeit (s)": zeit_in_sek,
+                        "Zeitstr": zeitstr,
+                        "Erfasst am": jetzt
+                    }])
+                    df = pd.concat([df, neue_zeile], ignore_index=True)
+                    speichere_zeiten(df)
+                    st.session_state["raw_input"] = ""  # Eingabefeld leeren
+                    st.rerun()
 
     # ---------------- Rangliste ----------------
     if not df.empty:
