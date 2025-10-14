@@ -182,27 +182,77 @@ def main():
                 st.markdown(f'<div class="ranking-entry {style}"><b>{row["Platz"]}. {row["Fahrer"]}</b> – {row["Durchschnitt (Top 3)"]}</div>', unsafe_allow_html=True)
         else:
             st.info("Mindestens 3 Zeiten pro Fahrer erforderlich.")
-    # ⏱️ Letzte 10 Rundenzeiten für das ausgewählte Event
-    st.subheader(f"⏱️ Letzte 10 Rundenzeiten ({event_filter})")
+    # ---------------- Letzte 10 Rundenzeiten ----------------
+    if not df.empty and event_filter:
+        st.subheader(f"⏱️ Letzte 10 Rundenzeiten für Event: {event_filter}")
+        df_event = df[df["Event"] == event_filter]
 
-    df_event = df[df["Event"] == event_filter]
-    df_event_sorted = df_event.sort_values("Erfasst am", ascending=False).head(10)
+        # Fahrerfilter
+        fahrer_filter = st.multiselect(
+            "Filter nach Fahrer:",
+            options=sorted(df_event["Fahrer"].unique()),
+            default=None
+        )
 
-    for idx, row in df_event_sorted.iterrows():
-        col1, col2 = st.columns([6, 1])
-        with col1:
-            st.markdown(
-                f'<div class="time-box">'
-                f'<b>{row["Fahrer"]}</b> – <i>{row["Event"]}</i><br>'
-                f'⏱️ {row["Zeitstr"]} <span style="color:gray;font-size:12px;">({row["Erfasst am"]})</span>'
-                f'</div>',
-                unsafe_allow_html=True
-            )
-        with col2:
-            if st.button("🗑️", key=f"del_{row.name}", help="Diesen Eintrag löschen"):
-                df = df.drop(row.name).reset_index(drop=True)
-                speichere_csv(df, RUNDENZEITEN_FILE_ID)
-                st.success("✅ Eintrag gelöscht!")
+        # Sortierung
+        sortierung = st.radio(
+            "Sortierung:",
+            ["Neueste Einträge zuerst", "Schnellste Zeiten zuerst"],
+            horizontal=True
+        )
+
+        # Filter anwenden
+        df_filtered = df_event[df_event["Fahrer"].isin(fahrer_filter)] if fahrer_filter else df_event
+        df_anzeige = df_filtered.sort_values(
+            "Erfasst am", ascending=False
+        ) if sortierung == "Neueste Einträge zuerst" else df_filtered.sort_values("Zeit (s)", ascending=True)
+
+        # Nur die letzten 10 Einträge
+        df_anzeige = df_anzeige.head(10)
+
+        # Anzeige der Einträge mit Löschbutton
+        for idx, row in df_anzeige.iterrows():
+            col1, col2 = st.columns([6, 1])
+            with col1:
+                st.markdown(
+                    f'<div class="time-box">'
+                    f'<b>{row["Fahrer"]}</b> – <i>{row["Event"]}</i><br>'
+                    f'⏱️ {row["Zeitstr"]} <span style="color:gray;font-size:12px;">({row["Erfasst am"]})</span>'
+                    f'</div>', unsafe_allow_html=True
+                )
+            with col2:
+                if st.button("🗑️", key=f"del_{row.name}", help="Diesen Eintrag löschen"):
+                    df = df.drop(row.name).reset_index(drop=True)
+                    speichere_csv(df, RUNDENZEITEN_FILE_ID)
+                    st.success("✅ Eintrag gelöscht!")
+
+        # Export der angezeigten Zeiten
+        col_a, col_b = st.columns(2)
+        with col_a:
+            csv_zeiten = df_event.to_csv(index=False, sep=";").encode("utf-8")
+            st.download_button("📥 Alle Zeiten als CSV", csv_zeiten, "rundenzeiten.csv", "text/csv", use_container_width=True)
+
+        # Alle Zeiten für das Event löschen
+        with col_b:
+            if st.session_state.get("show_delete_all_confirm") is None:
+                st.session_state["show_delete_all_confirm"] = False
+            if not st.session_state["show_delete_all_confirm"]:
+                if st.button("🗑️ Alle Rundenzeiten für Event löschen", use_container_width=True):
+                    st.session_state["show_delete_all_confirm"] = True
+            else:
+                st.warning("⚠️ Willst du wirklich alle Zeiten für dieses Event löschen?")
+                col_yes, col_no = st.columns(2)
+                with col_yes:
+                    if st.button("🗑️ Ja, löschen", key="delete_all_confirm", use_container_width=True):
+                        df = df[df["Event"] != event_filter]
+                        speichere_csv(df, RUNDENZEITEN_FILE_ID)
+                        st.session_state["show_delete_all_confirm"] = False
+                        st.success("🗑️ Alle Zeiten für Event gelöscht.")
+                with col_no:
+                    if st.button("❌ Abbrechen", key="cancel_delete_all", use_container_width=True):
+                        st.session_state["show_delete_all_confirm"] = False
+                        st.info("Löschvorgang abgebrochen.")
+
 # -------------------------------------------------
 if __name__ == "__main__":
     main()
