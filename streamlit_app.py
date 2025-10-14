@@ -160,8 +160,26 @@ def main():
             st.info("Mindestens 3 Zeiten pro Fahrer erforderlich.")
 
     # ---- Letzte 10 Rundenzeiten ----
-    if not df_event.empty:
-        st.subheader(f"⏱️ Letzte 10 Rundenzeiten für Event: {event_filter}")
+        if not df.empty and event_filter:
+            st.subheader(f"⏱️ Letzte 10 Rundenzeiten für Event: {event_filter}")
+            df_event = df[df["Event"] == event_filter]
+
+            # ---- Dynamische Hintergrundfarbe abhängig vom Theme ----
+            theme_base = st.get_option("theme.base")  # "light" oder "dark"
+            timebox_bg = "#f0f0f0" if theme_base == "light" else "#1b1b1b"
+            timebox_color = "black" if theme_base == "light" else "white"
+
+            st.markdown(f"""
+            <style>
+            .time-box {{
+                background-color: {timebox_bg};
+                color: {timebox_color};
+                padding: 10px;
+                border-radius: 8px;
+                margin-bottom: 8px;
+            }}
+            </style>
+            """, unsafe_allow_html=True)
 
         fahrer_filter = st.multiselect("Filter nach Fahrer:", options=sorted(df_event["Fahrer"].unique()), default=None)
         sortierung = st.radio("Sortierung:", ["Neueste Einträge zuerst", "Schnellste Zeiten zuerst"], horizontal=True)
