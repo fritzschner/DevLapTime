@@ -18,7 +18,7 @@ drive_service = build("drive", "v3", credentials=creds)
 
 # Diese beiden IDs musst du nachher anpassen:
 RUNDENZEITEN_FILE_ID = "1bzYUWbUPjyY_IJMjmzWp7J1_Ud2xyyji"
-EVENTS_FILE_ID = "1XXZ8npAOg9h-AVpmpan2XgHmEHEbK99B"
+EVENTS_FILE_ID = "1MKSGjsYwrOK0_J1wqMeL5ZxKBDhmD830"
 
 # -------------------------------------------------
 # 🔹 Hilfsfunktionen
