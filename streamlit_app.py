@@ -29,21 +29,23 @@ def speichere_zeiten(df):
 def main():
     st.set_page_config(page_title="RaceKino Rundenzeiten", layout="wide")
 
-    # Farbdesign & Überschrift
+    # Design
     st.markdown("""
-    <style>
-    body { background-color: #0e0e0e; color: white; }
-    .block-container { max-width: 1100px; margin: auto; }
-    .title {
-        background-color: #c20000; color: white; text-align: center;
-        padding: 15px; border-radius: 12px; font-size: 32px; font-weight: bold; margin-bottom: 25px;
-    }
-    .ranking-entry { padding: 8px; margin-bottom: 4px; border-radius: 8px; }
-    .gold { background-color: #FFD70033; }
-    .silver { background-color: #C0C0C033; }
-    .bronze { background-color: #CD7F3233; }
-    .time-box { background-color: #1b1b1b; padding: 10px; border-radius: 8px; margin-bottom: 8px; }
-    </style>
+        <style>
+        body { background-color: #0e0e0e; color: white; }
+        .block-container { max-width: 1100px; margin: auto; }
+        .title {
+            background-color: #c20000; color: white; text-align: center;
+            padding: 15px; border-radius: 12px; font-size: 32px; font-weight: bold; margin-bottom: 25px;
+        }
+        .ranking-entry { padding: 8px; margin-bottom: 4px; border-radius: 8px; }
+        .gold { background-color: #FFD70033; }
+        .silver { background-color: #C0C0C033; }
+        .bronze { background-color: #CD7F3233; }
+        .time-box {
+            background-color: #1b1b1b; padding: 10px; border-radius: 8px; margin-bottom: 8px;
+        }
+        </style>
     """, unsafe_allow_html=True)
 
     st.markdown('<div class="title">🏁 RaceKino Rundenzeiten</div>', unsafe_allow_html=True)
@@ -52,24 +54,21 @@ def main():
 
     # ---------------- Eingabeformular ----------------
     st.subheader("🏎️ Neue Rundenzeit eintragen")
-
-    if "zeit_input_temp" not in st.session_state:
-        st.session_state["zeit_input_temp"] = ""
-
     col1, col2 = st.columns([2, 2])
     fahrer = col1.text_input("Fahrername", key="fahrername")
 
+    # Eingabe der Zeit ohne Doppelpunkte
     raw_input = col2.text_input(
         "6 Ziffern eingeben (Format: MSSTTT)",
-        value=st.session_state["zeit_input_temp"],
+        value=st.session_state.get("zeit_input_temp", ""),
         max_chars=6,
         key="zeit_input_field"
     )
 
-    # Live-Formatierung der Eingabe
+    # Live-Formatierung
+    formatted_input = ""
     if raw_input:
         clean = "".join(filter(str.isdigit, raw_input))
-        formatted_input = ""
         if len(clean) >= 1:
             formatted_input += clean[0] + ":"
         if len(clean) >= 3:
@@ -106,13 +105,11 @@ def main():
                     }])
                     df = pd.concat([df, neue_zeile], ignore_index=True)
                     speichere_zeiten(df)
-                    st.session_state["zeit_input_temp"] = ""  # Eingabe zurücksetzen
+                    st.session_state["zeit_input_temp"] = ""  # Eingabe leeren
                     st.success(f"✅ Zeit für {fahrer} gespeichert!")
-
-                    # 1 Sekunde warten und die Anzeige automatisch aktualisieren
+                    # 1 Sekunde warten und Daten neu laden
                     time.sleep(1)
-                    df = lade_zeiten()  # CSV neu laden, um die Liste zu aktualisieren
-
+                    df = lade_zeiten()
             except Exception as e:
                 st.error(f"Fehler beim Verarbeiten der Eingabe: {e}")
 
@@ -147,11 +144,10 @@ def main():
     # ---------------- Letzte 10 Rundenzeiten ----------------
     if not df.empty:
         st.subheader("⏱️ Letzte 10 Rundenzeiten")
-
         fahrer_filter = st.multiselect("Filter nach Fahrer:", options=sorted(df["Fahrer"].unique()), default=None)
         sortierung = st.radio("Sortierung:", ["Neueste Einträge zuerst", "Schnellste Zeiten zuerst"], horizontal=True)
         df_filtered = df[df["Fahrer"].isin(fahrer_filter)] if fahrer_filter else df
-        df_anzeige = df_filtered.sort_values("Erfasst am", ascending=False) if sortierung=="Neueste Einträge zuerst" else df_filtered.sort_values("Zeit (s)", ascending=True)
+        df_anzeige = df_filtered.sort_values("Erfasst am", ascending=False) if sortierung == "Neueste Einträge zuerst" else df_filtered.sort_values("Zeit (s)", ascending=True)
         df_anzeige = df_anzeige.head(10)
 
         for idx, row in df_anzeige.iterrows():
@@ -167,7 +163,9 @@ def main():
                 if st.button("🗑️", key=f"del_{row.name}", help="Diesen Eintrag löschen"):
                     df = df.drop(row.name).reset_index(drop=True)
                     speichere_zeiten(df)
-                    st.success("✅ Eintrag gelöscht!")
+                    st.success("✅ Eintrag gelöscht.")
+                    time.sleep(1)
+                    df = lade_zeiten()
 
         col_a, col_b = st.columns(2)
         with col_a:
@@ -190,6 +188,8 @@ def main():
                             os.remove(DATEIPFAD)
                         st.session_state["show_delete_all_confirm"] = False
                         st.success("🗑️ Alle Zeiten gelöscht.")
+                        time.sleep(1)
+                        df = lade_zeiten()
                 with col_no:
                     if st.button("❌ Abbrechen", key="cancel_delete_all", use_container_width=True):
                         st.session_state["show_delete_all_confirm"] = False
