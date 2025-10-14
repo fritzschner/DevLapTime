@@ -80,8 +80,8 @@ def main():
         fahrer = col1.text_input("Fahrername")
 
         with col2:
-            st.markdown("**Rundenzeit eingeben (ohne Trennzeichen):**")
-            raw_input = st.text_input("z. B. 125512 → 1:25.512 oder 059123 → 0:59.123", max_chars=6)
+            st.markdown("**Rundenzeit eingeben:**")
+            raw_input = st.text_input("6 Ziffern eingeben (Format: MSSTTT):", max_chars=6)
 
             # Automatische Formatierung für Anzeige
             formatted_input = ""
