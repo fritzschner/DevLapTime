@@ -65,17 +65,16 @@ def main():
         key="zeit_input"
     )
 
-    # Live-Formatierung
+    # Live-Formatierung mit Platzhaltern
     formatted_input = ""
     if raw_input:
         clean = "".join(filter(str.isdigit, raw_input))
-        if len(clean) >= 1:
-            formatted_input += clean[0] + ":"
-        if len(clean) >= 3:
-            formatted_input += clean[1:3] + "."
-        if len(clean) > 3:
-            formatted_input += clean[3:6]
+        minuten = clean[0] if len(clean) >= 1 else "0"
+        sekunden = clean[1:3].ljust(2, "0") if len(clean) >= 2 else "00"
+        tausendstel = clean[3:6].ljust(3, "0") if len(clean) >= 4 else "000"
+        formatted_input = f"{minuten}:{sekunden}.{tausendstel}"
         st.markdown(f"🕒 **Eingegebene Zeit:** {formatted_input}")
+
 
     # Speichern-Button
     if st.button("💾 Hinzufügen", use_container_width=True):
