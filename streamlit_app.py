@@ -213,6 +213,7 @@ def main():
         ist_bestzeit = abs(row["Zeit (s)"] - best_dict.get(row["Fahrer"], float("inf"))) < 0.0001
         ist_top3 = row["Zeit (s)"] in top3_dict.get(row["Fahrer"], set())
         box_style = "background-color: #fff9b1; color: black;" if ist_bestzeit else ""
+        best_text = " <b>(Persönliche Bestzeit)</b>" if ist_bestzeit else ""
         zeit_html = f"⭐ <b>{row['Zeitstr']}</b>" if ist_top3 else row["Zeitstr"]
 
         with col1:
