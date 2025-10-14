@@ -185,20 +185,31 @@ def main():
         with col_a:
             csv_zeiten = df.to_csv(index=False, sep=";").encode("utf-8")
             st.download_button("📥 Alle Zeiten als CSV", csv_zeiten, "rundenzeiten.csv", "text/csv", use_container_width=True)
-        with col_b:
-            st.markdown("⚠️ Willst du wirklich alle Zeiten löschen?")
-            col_yes, col_no = st.columns(2)
-            with col_yes:
-                if st.button("🗑️ Ja, löschen", key="delete_all"):
-                    if os.path.exists(DATEIPFAD):
-                        os.remove(DATEIPFAD)
-                    st.success("🗑️ Alle Zeiten gelöscht.")
-                    time.sleep(1)
-                    st.rerun()
-            with col_no:
-                if st.button("❌ Abbrechen", key="cancel_delete"):
-                    st.info("Löschvorgang abgebrochen.")
 
+        with col_b:
+            if st.session_state.get("show_delete_all_confirm") is None:
+                st.session_state["show_delete_all_confirm"] = False
+
+            # Stufe 1: Initialer Button
+            if not st.session_state["show_delete_all_confirm"]:
+                if st.button("🗑️ Alle Rundenzeiten löschen", use_container_width=True):
+                    st.session_state["show_delete_all_confirm"] = True
+            else:
+                # Stufe 2: Bestätigung anzeigen
+                st.markdown("⚠️ Willst du wirklich alle Zeiten löschen?")
+                col_yes, col_no = st.columns(2)
+                with col_yes:
+                    if st.button("🗑️ Ja, löschen", key="delete_all_confirm", use_container_width=True):
+                        if os.path.exists(DATEIPFAD):
+                            os.remove(DATEIPFAD)
+                        st.session_state["show_delete_all_confirm"] = False
+                        st.success("🗑️ Alle Zeiten gelöscht.")
+                        time.sleep(1)
+                        st.rerun()
+                with col_no:
+                    if st.button("❌ Abbrechen", key="cancel_delete_all", use_container_width=True):
+                        st.session_state["show_delete_all_confirm"] = False
+                        st.info("Löschvorgang abgebrochen.")
     else:
         st.info("Noch keine Rundenzeiten erfasst.")
 
