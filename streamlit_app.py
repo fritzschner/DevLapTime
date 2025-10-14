@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 import os
+import time
 
 DATEIPFAD = "rundenzeiten.csv"
 
@@ -14,7 +15,7 @@ def sekunden_zu_zeitstr(sekunden):
     rest = sekunden % 60
     sek = int(rest)
     tausendstel = int(round((rest - sek) * 1000))
-    return f"{minuten}:{sek:02d}:{tausendstel:03d}"
+    return f"{minuten}:{sek:02d}.{tausendstel:03d}"
 
 def lade_zeiten():
     if not os.path.exists(DATEIPFAD):
@@ -82,6 +83,18 @@ def main():
             st.markdown("**Rundenzeit eingeben (ohne Trennzeichen):**")
             zeit_input = st.text_input("z. B. 125512 → 1:25.512 oder 059123 → 0:59.123", max_chars=6)
 
+            # Live-Vorschau der interpretierten Zeit
+            if zeit_input.isdigit() and len(zeit_input) == 6:
+                minuten = int(zeit_input[0])
+                sekunden = int(zeit_input[1:3])
+                tausendstel = int(zeit_input[3:6])
+                if sekunden <= 59 and tausendstel <= 999:
+                    st.markdown(f"🕒 **Eingegebene Zeit:** {minuten}:{sekunden:02d}.{tausendstel:03d}")
+                else:
+                    st.markdown("<span style='color:#ff6666;'>❌ Ungültige Kombination (Sekunden ≤ 59, Tausendstel ≤ 999)</span>", unsafe_allow_html=True)
+            elif len(zeit_input) > 0:
+                st.markdown("<span style='color:#888;'>Bitte genau 6 Ziffern eingeben (Format M SS MMM)</span>", unsafe_allow_html=True)
+
         abgeschickt = st.form_submit_button("💾 Hinzufügen", use_container_width=True)
 
         if abgeschickt:
@@ -120,8 +133,6 @@ def main():
 
                 except Exception as e:
                     st.error(f"Fehler beim Verarbeiten der Eingabe: {e}")
-
-
 
     # ---------------- Rangliste ----------------
     if not df.empty:
@@ -179,16 +190,24 @@ def main():
             df_anzeige = df.sort_values("Zeit (s)", ascending=True)
 
         df_anzeige = df_anzeige.head(10).reset_index(drop=True)
-        df_anzeige["Nr."] = df_anzeige.index + 1
 
-        for _, row in df_anzeige.iterrows():
-            st.markdown(
-                f'<div class="time-box">'
-                f'<b>{row["Nr."]}. {row["Fahrer"]}</b><br>'
-                f'⏱️ {row["Zeitstr"]} <span style="color:gray;font-size:12px;">({row["Erfasst am"]})</span>'
-                f'</div>',
-                unsafe_allow_html=True,
-            )
+        for idx, row in df_anzeige.iterrows():
+            col1, col2 = st.columns([6, 1])
+            with col1:
+                st.markdown(
+                    f'<div class="time-box">'
+                    f'<b>{row["Fahrer"]}</b><br>'
+                    f'⏱️ {row["Zeitstr"]} <span style="color:gray;font-size:12px;">({row["Erfasst am"]})</span>'
+                    f'</div>',
+                    unsafe_allow_html=True,
+                )
+            with col2:
+                if st.button("🗑️", key=f"del_{idx}", help="Diesen Eintrag löschen"):
+                    df = df.drop(row.name).reset_index(drop=True)
+                    speichere_zeiten(df)
+                    st.success("✅ Eintrag gelöscht.")
+                    time.sleep(1)
+                    st.rerun()
 
         # CSV-Export + Alle löschen
         col_a, col_b = st.columns(2)
@@ -198,7 +217,8 @@ def main():
         with col_b:
             if st.button("🗑️ Alle Zeiten löschen", use_container_width=True, type="secondary"):
                 os.remove(DATEIPFAD)
-                st.warning("Alle Zeiten wurden gelöscht.")
+                st.error("🗑️ Alle Zeiten gelöscht.")
+                time.sleep(1)
                 st.rerun()
     else:
         st.info("Noch keine Rundenzeiten erfasst.")
