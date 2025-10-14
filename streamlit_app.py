@@ -53,19 +53,10 @@ def main():
 
     col1, col2 = st.columns([2, 2])
 
-    # --- Kombiniertes Fahrernamensfeld ---
-    vorhandene_fahrer = sorted(df["Fahrer"].unique()) if not df.empty else []
-    fahrer = col1.selectbox(
-        "Fahrername auswählen oder neu eingeben",
-        options=[""] + vorhandene_fahrer,
-        index=0,
-        key="fahrer_combined"
-    )
-    fahrer_neu = col1.text_input("Neuen Namen eingeben (optional, überschreibt Auswahl)", value="", key="fahrer_neu")
-    if fahrer_neu.strip():
-        fahrer = fahrer_neu.strip()
+    # Einfaches Textfeld für Fahrername
+    fahrer = col1.text_input("Fahrername", key="fahrername")
 
-    # --- Zeiteneingabe ---
+    # Zeiteneingabe
     raw_input = col2.text_input(
         "6 Ziffern eingeben (Format: MSSTTT)",
         value=st.session_state["zeit_input_temp"],
