@@ -187,14 +187,18 @@ def main():
             st.download_button("📥 Alle Zeiten als CSV", csv_zeiten, "rundenzeiten.csv", "text/csv", use_container_width=True)
         with col_b:
             st.markdown("⚠️ Willst du wirklich alle Zeiten löschen?")
-            sicherheit = st.checkbox("Ja, ich möchte alle Zeiten löschen")
-            if sicherheit:
-                if st.button("🗑️ Alle Zeiten endgültig löschen", use_container_width=True):
+            col_yes, col_no = st.columns(2)
+            with col_yes:
+                if st.button("🗑️ Ja, löschen", key="delete_all"):
                     if os.path.exists(DATEIPFAD):
                         os.remove(DATEIPFAD)
                     st.success("🗑️ Alle Zeiten gelöscht.")
                     time.sleep(1)
                     st.rerun()
+            with col_no:
+                if st.button("❌ Abbrechen", key="cancel_delete"):
+                    st.info("Löschvorgang abgebrochen.")
+
     else:
         st.info("Noch keine Rundenzeiten erfasst.")
 
