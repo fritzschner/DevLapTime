@@ -6,7 +6,7 @@ import time
 
 DATEIPFAD = "rundenzeiten.csv"
 
-# ------------------- Hilfsfunktionen -------------------
+# ---------------- Hilfsfunktionen ----------------
 def zeit_zu_sekunden(minuten, sekunden, tausendstel):
     return minuten * 60 + sekunden + tausendstel / 1000
 
@@ -25,19 +25,19 @@ def lade_zeiten():
 def speichere_zeiten(df):
     df.to_csv(DATEIPFAD, sep=";", index=False)
 
-# ------------------- Hauptfunktion -------------------
+# ---------------- Hauptfunktion ----------------
 def main():
     st.set_page_config(page_title="RaceKino Rundenzeiten", layout="wide")
 
-    # Design
-    st.markdown(
-        """
+    # --- Farbschema & Stil ---
+    st.markdown("""
         <style>
         body { background-color: #0e0e0e; color: white; }
         .block-container { max-width: 1100px; margin: auto; }
         .title {
             background-color: #c20000; color: white; text-align: center;
-            padding: 15px; border-radius: 12px; font-size: 32px; font-weight: bold; margin-bottom: 25px;
+            padding: 15px; border-radius: 12px; font-size: 32px; font-weight: bold;
+            margin-bottom: 25px;
         }
         .ranking-entry { padding: 8px; margin-bottom: 4px; border-radius: 8px; }
         .gold { background-color: #FFD70033; }
@@ -47,9 +47,7 @@ def main():
             background-color: #1b1b1b; padding: 10px; border-radius: 8px; margin-bottom: 8px;
         }
         </style>
-        """,
-        unsafe_allow_html=True,
-    )
+    """, unsafe_allow_html=True)
 
     st.markdown('<div class="title">🏁 RaceKino Rundenzeiten</div>', unsafe_allow_html=True)
 
@@ -61,28 +59,41 @@ def main():
     col1, col2 = st.columns([2, 2])
     fahrer = col1.text_input("Fahrername", key="fahrername")
 
-    # Eingabe der Zeit (ohne Doppelpunkte)
-    raw_input = st.text_input(
+    # Initialisiere SessionState
+    if "zeit_input_field" not in st.session_state:
+        st.session_state["zeit_input_field"] = ""
+    if "formatted_time" not in st.session_state:
+        st.session_state["formatted_time"] = ""
+
+    # --- Callback für Live-Formatierung ---
+    def update_time():
+        raw = st.session_state["zeit_input_field"]
+        clean = "".join(filter(str.isdigit, raw))
+        formatted = ""
+        if len(clean) >= 1:
+            formatted += clean[0] + ":"
+        if len(clean) >= 3:
+            formatted += clean[1:3] + "."
+        if len(clean) > 3:
+            formatted += clean[3:6]
+        st.session_state["formatted_time"] = formatted
+
+    # Eingabefeld mit on_change für Live-Update
+    st.text_input(
         "6 Ziffern eingeben (Format: MSSTTT)",
-        value=st.session_state.get("zeit_input_field", ""),
+        value=st.session_state["zeit_input_field"],
         max_chars=6,
-        key="zeit_input"
+        key="zeit_input_field",
+        on_change=update_time
     )
 
-    # Live-Formatierung
-    formatted_input = ""
-    if raw_input:
-        clean = "".join(filter(str.isdigit, raw_input))
-        if len(clean) >= 1:
-            formatted_input += clean[0] + ":"
-        if len(clean) >= 3:
-            formatted_input += clean[1:3] + "."
-        if len(clean) > 3:
-            formatted_input += clean[3:6]
-        st.markdown(f"🕒 **Eingegebene Zeit:** {formatted_input}")
+    # Liveanzeige der formatierten Zeit
+    if st.session_state["formatted_time"]:
+        st.markdown(f"🕒 **Eingegebene Zeit:** {st.session_state['formatted_time']}")
 
-    # Speichern-Button
+    # --- Hinzufügen-Button ---
     if st.button("💾 Hinzufügen", use_container_width=True):
+        raw_input = st.session_state["zeit_input_field"]
         if not fahrer:
             st.warning("Bitte Fahrername eingeben.")
         elif not raw_input.isdigit() or len(raw_input) != 6:
@@ -109,7 +120,9 @@ def main():
                     }])
                     df = pd.concat([df, neue_zeile], ignore_index=True)
                     speichere_zeiten(df)
-                    st.session_state["zeit_input_field"] = ""  # Eingabe zurücksetzen
+                    # Eingabefeld nach Speichern zurücksetzen
+                    st.session_state["zeit_input_field"] = ""
+                    st.session_state["formatted_time"] = ""
                     st.success(f"✅ Zeit für {fahrer} gespeichert!")
                     time.sleep(1)
                     st.rerun()
@@ -200,6 +213,7 @@ def main():
                         st.info("Löschvorgang abgebrochen.")
     else:
         st.info("Noch keine Rundenzeiten erfasst.")
+
 
 # ------------------- Start -------------------
 if __name__ == "__main__":
