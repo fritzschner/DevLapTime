@@ -198,7 +198,6 @@ def main():
                 # Stufe 2: Bestätigung anzeigen
                 st.markdown("⚠️ Willst du wirklich alle Zeiten löschen?")
                 col_yes, col_no = st.columns(2)
-                st.rerun()
                 with col_yes:
                     if st.button("🗑️ Ja, löschen", key="delete_all_confirm", use_container_width=True):
                         if os.path.exists(DATEIPFAD):
@@ -211,7 +210,6 @@ def main():
                     if st.button("❌ Abbrechen", key="cancel_delete_all", use_container_width=True):
                         st.session_state["show_delete_all_confirm"] = False
                         st.info("Löschvorgang abgebrochen.")
-                        st.rerun()
     else:
         st.info("Noch keine Rundenzeiten erfasst.")
 
