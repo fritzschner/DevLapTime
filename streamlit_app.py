@@ -205,15 +205,25 @@ def main():
             ist_bestzeit = abs(row["Zeit (s)"] - best_dict.get(row["Fahrer"], float("inf"))) < 0.0001
             ist_top3 = row["Zeit (s)"] in top3_dict.get(row["Fahrer"], set())
 
-            # Stil abhängig von Status
-            box_style = "background-color: #fff9b1;" if ist_bestzeit else ""  # gelb für Bestzeit
+            # Stil abhängig vom Status
+            if ist_bestzeit:
+                box_style = "background-color: #fff9b1; color: black;"  # Hellgelb mit schwarzer Schrift
+            elif ist_top3:
+                box_style = "background-color: #cce5ff;"  # hellblau für Top-3-Zeiten
+            else:
+                box_style = ""
+
+            # Zeitdarstellung
             zeit_html = f"<b>{row['Zeitstr']}</b>" if ist_top3 else row["Zeitstr"]
+            symbol = "⭐ " if ist_top3 else ""  # Markierung für Top-3-Zeiten
+            best_symbol = " 🥇" if ist_bestzeit else ""  # Symbol für persönliche Bestzeit
 
             with col1:
                 st.markdown(
                     f'<div class="time-box" style="{box_style}">'
                     f'<b>{row["Fahrer"]}</b> – <i>{row["Event"]}</i><br>'
-                    f'⏱️ {zeit_html} <span style="color:gray;font-size:12px;">({row["Erfasst am"]})</span>'
+                    f'{symbol}⏱️ {zeit_html}{best_symbol} '
+                    f'<span style="color:gray;font-size:12px;">({row["Erfasst am"]})</span>'
                     f'</div>',
                     unsafe_allow_html=True
                 )
@@ -223,7 +233,6 @@ def main():
                     df = df.drop(row.name).reset_index(drop=True)
                     speichere_csv(df, RUNDENZEITEN_FILE_ID)
                     st.success("✅ Eintrag gelöscht!")
-
 
         col_a, col_b = st.columns(2)
         with col_a:
