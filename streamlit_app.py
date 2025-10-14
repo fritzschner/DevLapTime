@@ -1,7 +1,9 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime
+from zoneinfo import ZoneInfo
 import os
+import time
 
 DATEIPFAD = "rundenzeiten.csv"
 
@@ -27,23 +29,27 @@ def speichere_zeiten(df):
 # ------------------- Hauptfunktion -------------------
 def main():
     st.set_page_config(page_title="RaceKino Rundenzeiten", layout="wide")
-    df = lade_zeiten()
 
     # Farbdesign & Überschrift
     st.markdown("""
     <style>
     body { background-color: #0e0e0e; color: white; }
     .block-container { max-width: 1100px; margin: auto; }
-    .title { background-color: #c20000; color: white; text-align: center; padding: 15px; border-radius: 12px; font-size: 32px; font-weight: bold; margin-bottom: 25px; }
+    .title {
+        background-color: #c20000; color: white; text-align: center;
+        padding: 15px; border-radius: 12px; font-size: 32px; font-weight: bold; margin-bottom: 25px;
+    }
     .ranking-entry { padding: 8px; margin-bottom: 4px; border-radius: 8px; }
-    .gold { background-color: #FFD70033; }
-    .silver { background-color: #C0C0C033; }
-    .bronze { background-color: #CD7F3233; }
+    .gold { background-color: #FFD700AA; color: #2b2b2b; font-weight:bold; }
+    .silver { background-color: #C0C0C0AA; color: #2b2b2b; font-weight:bold; }
+    .bronze { background-color: #CD7F3233; color: white; font-weight:bold; }
     .time-box { background-color: #1b1b1b; padding: 10px; border-radius: 8px; margin-bottom: 8px; }
     </style>
     """, unsafe_allow_html=True)
 
     st.markdown('<div class="title">🏁 RaceKino Rundenzeiten</div>', unsafe_allow_html=True)
+
+    df = lade_zeiten()
 
     # ---------------- Eingabeformular ----------------
     st.subheader("🏎️ Neue Rundenzeit eintragen")
@@ -52,11 +58,8 @@ def main():
         st.session_state["zeit_input_temp"] = ""
 
     col1, col2 = st.columns([2, 2])
-
-    # Einfaches Textfeld für Fahrername
     fahrer = col1.text_input("Fahrername", key="fahrername")
 
-    # Zeiteneingabe
     raw_input = col2.text_input(
         "6 Ziffern eingeben (Format: MSSTTT)",
         value=st.session_state["zeit_input_temp"],
@@ -91,7 +94,8 @@ def main():
                     st.error("Ungültige Zeit. Sekunden ≤ 59, Tausendstel ≤ 999.")
                 else:
                     zeit_in_sek = zeit_zu_sekunden(minuten, sekunden, tausendstel)
-                    jetzt = datetime.now().strftime("%d.%m.%Y %H:%M:%S")
+                    # MEZ/MESZ Zeit
+                    jetzt = datetime.now(ZoneInfo("Europe/Berlin")).strftime("%d.%m.%Y %H:%M:%S")
                     zeitstr = f"{minuten}:{sekunden:02d}.{tausendstel:03d}"
                     neue_zeile = pd.DataFrame([{
                         "Fahrer": fahrer,
@@ -140,6 +144,7 @@ def main():
     # ---------------- Letzte 10 Rundenzeiten ----------------
     if not df.empty:
         st.subheader("⏱️ Letzte 10 Rundenzeiten")
+
         fahrer_filter = st.multiselect("Filter nach Fahrer:", options=sorted(df["Fahrer"].unique()), default=None)
         sortierung = st.radio("Sortierung:", ["Neueste Einträge zuerst", "Schnellste Zeiten zuerst"], horizontal=True)
         df_filtered = df[df["Fahrer"].isin(fahrer_filter)] if fahrer_filter else df
