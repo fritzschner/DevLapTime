@@ -182,7 +182,27 @@ def main():
                 st.markdown(f'<div class="ranking-entry {style}"><b>{row["Platz"]}. {row["Fahrer"]}</b> – {row["Durchschnitt (Top 3)"]}</div>', unsafe_allow_html=True)
         else:
             st.info("Mindestens 3 Zeiten pro Fahrer erforderlich.")
+    # ⏱️ Letzte 10 Rundenzeiten für das ausgewählte Event
+    st.subheader(f"⏱️ Letzte 10 Rundenzeiten ({event_filter})")
 
+    df_event = df[df["Event"] == event_filter]
+    df_event_sorted = df_event.sort_values("Erfasst am", ascending=False).head(10)
+
+    for idx, row in df_event_sorted.iterrows():
+        col1, col2 = st.columns([6, 1])
+        with col1:
+            st.markdown(
+                f'<div class="time-box">'
+                f'<b>{row["Fahrer"]}</b> – <i>{row["Event"]}</i><br>'
+                f'⏱️ {row["Zeitstr"]} <span style="color:gray;font-size:12px;">({row["Erfasst am"]})</span>'
+                f'</div>',
+                unsafe_allow_html=True
+            )
+        with col2:
+            if st.button("🗑️", key=f"del_{row.name}", help="Diesen Eintrag löschen"):
+                df = df.drop(row.name).reset_index(drop=True)
+                speichere_csv(df, RUNDENZEITEN_FILE_ID)
+                st.success("✅ Eintrag gelöscht!")
 # -------------------------------------------------
 if __name__ == "__main__":
     main()
