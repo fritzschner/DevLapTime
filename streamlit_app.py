@@ -151,35 +151,56 @@ def main():
 
         if rangliste:
             st.subheader(f"🏆 Rangliste für Event: {event_filter}")
+
+            # Medaillen für Top 3
+            medaillen = ["🥇", "🥈", "🥉"]
+
             rang_df = pd.DataFrame(rangliste).sort_values("Wert").reset_index(drop=True)
             rang_df["Platz"] = rang_df.index + 1
+            rang_df["Medaille"] = rang_df["Platz"].apply(
+                lambda x: medaillen[x - 1] if x <= 3 else ""
+            )
+
+            # Ausgabe mit Medaillen + farbiger Hervorhebung
             for _, row in rang_df.iterrows():
-                style = "gold" if row["Platz"] == 1 else "silver" if row["Platz"] == 2 else "bronze" if row["Platz"] == 3 else ""
-                st.markdown(f'<div class="ranking-entry {style}"><b>{row["Platz"]}. {row["Fahrer"]}</b> – {row["Durchschnitt (Top 3)"]}</div>', unsafe_allow_html=True)
+                style = (
+                    "gold" if row["Platz"] == 1
+                    else "silver" if row["Platz"] == 2
+                    else "bronze" if row["Platz"] == 3
+                    else ""
+                )
+
+                st.markdown(
+                    f'<div class="ranking-entry {style}">'
+                    f'{row["Medaille"]} <b>{row["Platz"]}. {row["Fahrer"]}</b> – '
+                    f'{row["Durchschnitt (Top 3)"]}'
+                    f'</div>',
+                    unsafe_allow_html=True
+                )
         else:
             st.info("Mindestens 3 Zeiten pro Fahrer erforderlich.")
 
     # ---- Letzte 10 Rundenzeiten ----
-        if not df.empty and event_filter:
-            st.subheader(f"⏱️ Letzte 10 Rundenzeiten für Event: {event_filter}")
-            df_event = df[df["Event"] == event_filter]
+    if not df.empty and event_filter:
+        st.subheader(f"⏱️ Letzte 20 Rundenzeiten für Event: {event_filter}")
+        df_event = df[df["Event"] == event_filter]
 
-            # ---- Dynamische Hintergrundfarbe abhängig vom Theme ----
-            theme_base = st.get_option("theme.base")  # "light" oder "dark"
-            timebox_bg = "#f0f0f0" if theme_base == "light" else "#1b1b1b"
-            timebox_color = "black" if theme_base == "light" else "white"
+        # ---- Dynamische Hintergrundfarbe abhängig vom Theme ----
+        theme_base = st.get_option("theme.base")  # "light" oder "dark"
+        timebox_bg = "#f0f0f0" if theme_base == "light" else "#1b1b1b"
+        timebox_color = "black" if theme_base == "light" else "white"
 
-            st.markdown(f"""
-            <style>
-            .time-box {{
-                background-color: {timebox_bg};
-                color: {timebox_color};
-                padding: 10px;
-                border-radius: 8px;
-                margin-bottom: 8px;
-            }}
-            </style>
-            """, unsafe_allow_html=True)
+        st.markdown(f"""
+        <style>
+        .time-box {{
+            background-color: {timebox_bg};
+            color: {timebox_color};
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+        }}
+        </style>
+        """, unsafe_allow_html=True)
 
         fahrer_filter = st.multiselect("Filter nach Fahrer:", options=sorted(df_event["Fahrer"].unique()), default=None)
         sortierung = st.radio("Sortierung:", ["Neueste Einträge zuerst", "Schnellste Zeiten zuerst"], horizontal=True)
@@ -191,10 +212,8 @@ def main():
 
 
         # ---- Bestzeiten ermitteln ----
-        # Für jeden Fahrer: Top 3 und beste Zeit bestimmen
         top3_dict = {}
         best_dict = {}
-
         for name, gruppe in df_event.groupby("Fahrer"):
             sortiert = gruppe.sort_values("Zeit (s)")
             best_dict[name] = sortiert.iloc[0]["Zeit (s)"] if not sortiert.empty else None
@@ -203,26 +222,26 @@ def main():
         for idx, row in df_anzeige.iterrows():
             col1, col2 = st.columns([6, 1])
 
-            # Prüfen, ob es eine der Top-3 oder persönliche Bestzeit ist
+            # Prüfen, ob persönliche Bestzeit
             ist_bestzeit = abs(row["Zeit (s)"] - best_dict.get(row["Fahrer"], float("inf"))) < 0.0001
             ist_top3 = row["Zeit (s)"] in top3_dict.get(row["Fahrer"], set())
 
             # Stil abhängig vom Status
             if ist_bestzeit:
                 box_style = "background-color: #fff9b1; color: black;"  # Hellgelb mit schwarzer Schrift
+                best_text = " <b>(Persönliche Bestzeit)</b>"
             else:
                 box_style = ""
+                best_text = ""
 
             # Zeitdarstellung
             zeit_html = f"<b>{row['Zeitstr']}</b>" if ist_top3 else row["Zeitstr"]
-            symbol = "⭐ " if ist_top3 else ""
-            best_symbol = " 🥇" if ist_bestzeit else ""
 
             with col1:
                 st.markdown(
                     f'<div class="time-box" style="{box_style}">'
                     f'<b>{row["Fahrer"]}</b> – <i>{row["Event"]}</i><br>'
-                    f'{symbol}⏱️ {zeit_html}{best_symbol} '
+                    f'⏱️ {zeit_html}{best_text} '
                     f'<span style="color:gray;font-size:12px;">({row["Erfasst am"]})</span>'
                     f'</div>',
                     unsafe_allow_html=True
