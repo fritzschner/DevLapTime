@@ -109,6 +109,7 @@ def main():
                     st.success(f"✅ Zeit für {fahrer} gespeichert!")
                     # 1 Sekunde warten und Daten neu laden
                     time.sleep(1)
+                    st.rerun()
                     df = lade_zeiten()
             except Exception as e:
                 st.error(f"Fehler beim Verarbeiten der Eingabe: {e}")
