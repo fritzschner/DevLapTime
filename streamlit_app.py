@@ -155,8 +155,9 @@ def main():
                 st.error("Ungültige Zeit.")
             else:
                 zeit_in_sek = zeit_zu_sekunden(minuten, sekunden, tausendstel)
-                jetzt = datetime.now().strftime("%d.%m.%Y %H:%M:%S")
+                jetzt = datetime.now(MEZ).strftime("%d.%m.%Y %H:%M:%S")  # MEZ-Zeit
                 zeitstr = f"{minuten}:{sekunden:02d}.{tausendstel:03d}"
+
                 neue_zeile = pd.DataFrame([{
                     "Fahrer": fahrer,
                     "Minuten": minuten,
