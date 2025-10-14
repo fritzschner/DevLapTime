@@ -208,15 +208,13 @@ def main():
             # Stil abhängig vom Status
             if ist_bestzeit:
                 box_style = "background-color: #fff9b1; color: black;"  # Hellgelb mit schwarzer Schrift
-            elif ist_top3:
-                box_style = "background-color: #cce5ff;"  # hellblau für Top-3-Zeiten
             else:
                 box_style = ""
 
             # Zeitdarstellung
             zeit_html = f"<b>{row['Zeitstr']}</b>" if ist_top3 else row["Zeitstr"]
-            symbol = "⭐ " if ist_top3 else ""  # Markierung für Top-3-Zeiten
-            best_symbol = " 🥇" if ist_bestzeit else ""  # Symbol für persönliche Bestzeit
+            symbol = "⭐ " if ist_top3 else ""
+            best_symbol = " 🥇" if ist_bestzeit else ""
 
             with col1:
                 st.markdown(
