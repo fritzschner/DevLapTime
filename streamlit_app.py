@@ -75,49 +75,52 @@ def main():
 
     # ---------------- Eingabeformular ----------------
     with st.form("eingabe_formular"):
-        col1, col2 = st.columns([2, 3])
+        col1, col2 = st.columns([2, 2])
         fahrer = col1.text_input("Fahrername")
 
         with col2:
-            st.markdown("**Rundenzeit einstellen:**")
-
-            # --- Minuten ---
-            c1, c2, c3 = st.columns(3)
-            with c1:
-                minuten = st.slider("Min", 0, 9, 0, key="slider_minuten")
-                min_input = st.number_input(" ", min_value=0, max_value=9, value=minuten, key="input_minuten")
-                minuten = min_input  # Priorität Tastatureingabe
-
-            # --- Sekunden ---
-            with c2:
-                sekunden = st.slider("Sek", 0, 59, 0, key="slider_sekunden")
-                sek_input = st.number_input("  ", min_value=0, max_value=59, value=sekunden, key="input_sekunden")
-                sekunden = sek_input
-
-            # --- Tausendstel ---
-            with c3:
-                tausendstel = st.slider("Tsd", 0, 999, 0, key="slider_tausendstel")
-                tsd_input = st.number_input("   ", min_value=0, max_value=999, value=tausendstel, key="input_tausendstel")
-                tausendstel = tsd_input
+            st.markdown("**Rundenzeit eingeben (ohne Trennzeichen):**")
+            zeit_input = st.text_input("z. B. 125512 → 1:25.512 oder 059123 → 0:59.123", max_chars=6)
 
         abgeschickt = st.form_submit_button("💾 Hinzufügen", use_container_width=True)
 
-        if abgeschickt and fahrer and (minuten > 0 or sekunden > 0 or tausendstel > 0):
-            zeit_in_sek = zeit_zu_sekunden(minuten, sekunden, tausendstel)
-            jetzt = datetime.now().strftime("%d.%m.%Y %H:%M:%S")
-            zeitstr = f"{int(minuten)}:{int(sekunden):02d}:{int(tausendstel):03d}"
-            neue_zeile = pd.DataFrame([{
-                "Fahrer": fahrer,
-                "Minuten": minuten,
-                "Sekunden": sekunden,
-                "Tausendstel": tausendstel,
-                "Zeit (s)": zeit_in_sek,
-                "Zeitstr": zeitstr,
-                "Erfasst am": jetzt
-            }])
-            df = pd.concat([df, neue_zeile], ignore_index=True)
-            speichere_zeiten(df)
-            st.rerun()
+        if abgeschickt:
+            if not fahrer:
+                st.warning("Bitte Fahrername eingeben.")
+            elif not zeit_input.isdigit():
+                st.warning("Bitte nur Zahlen eingeben (z. B. 125512).")
+            elif len(zeit_input) != 6:
+                st.warning("Bitte genau 6 Ziffern eingeben (Format M SS MMM).")
+            else:
+                try:
+                    minuten = int(zeit_input[0])
+                    sekunden = int(zeit_input[1:3])
+                    tausendstel = int(zeit_input[3:6])
+
+                    if sekunden > 59 or tausendstel > 999:
+                        st.error("Ungültige Zeit. Sekunden ≤ 59, Tausendstel ≤ 999.")
+                    else:
+                        zeit_in_sek = zeit_zu_sekunden(minuten, sekunden, tausendstel)
+                        jetzt = datetime.now().strftime("%d.%m.%Y %H:%M:%S")
+                        zeitstr = f"{minuten}:{sekunden:02d}.{tausendstel:03d}"
+
+                        neue_zeile = pd.DataFrame([{
+                            "Fahrer": fahrer,
+                            "Minuten": minuten,
+                            "Sekunden": sekunden,
+                            "Tausendstel": tausendstel,
+                            "Zeit (s)": zeit_in_sek,
+                            "Zeitstr": zeitstr,
+                            "Erfasst am": jetzt
+                        }])
+
+                        df = pd.concat([df, neue_zeile], ignore_index=True)
+                        speichere_zeiten(df)
+                        st.rerun()
+
+                except Exception as e:
+                    st.error(f"Fehler beim Verarbeiten der Eingabe: {e}")
+
 
 
     # ---------------- Rangliste ----------------
