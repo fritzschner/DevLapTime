@@ -20,7 +20,7 @@ def sekunden_zu_zeitstr(sekunden):
 
 def lade_zeiten():
     if not os.path.exists(DATEIPFAD):
-        return pd.DataFrame(columns=["Fahrer", "Minuten", "Sekunden", "Tausendstel", "Zeit (s)", "Zeitstr", "Erfasst am"])
+        return pd.DataFrame(columns=["Fahrer", "Minuten", "Sekunden", "Tausendstel", "Zeit (s)", "Zeitstr", "Erfasst am", "Event"])
     return pd.read_csv(DATEIPFAD, sep=";")
 
 def speichere_zeiten(df):
@@ -57,9 +57,10 @@ def main():
     if "zeit_input_temp" not in st.session_state:
         st.session_state["zeit_input_temp"] = ""
 
-    col1, col2 = st.columns([2, 2])
+    col1, col2, col3 = st.columns([2, 2, 2])
     fahrer = col1.text_input("Fahrername", key="fahrername")
-
+    event = col3.text_input("Event", key="eventname")
+    
     raw_input = col2.text_input(
         "6 Ziffern eingeben (Format: MSSTTT)",
         value=st.session_state["zeit_input_temp"],
@@ -83,6 +84,8 @@ def main():
     if st.button("💾 Hinzufügen", use_container_width=True):
         if not fahrer:
             st.warning("Bitte Fahrername eingeben.")
+        elif not event:
+            st.warning("Bitte Event eingeben.")
         elif not raw_input.isdigit() or len(raw_input) != 6:
             st.warning("Bitte genau 6 Ziffern eingeben (Format M SS MMM).")
         else:
@@ -94,7 +97,6 @@ def main():
                     st.error("Ungültige Zeit. Sekunden ≤ 59, Tausendstel ≤ 999.")
                 else:
                     zeit_in_sek = zeit_zu_sekunden(minuten, sekunden, tausendstel)
-                    # MEZ/MESZ Zeit
                     jetzt = datetime.now(ZoneInfo("Europe/Berlin")).strftime("%d.%m.%Y %H:%M:%S")
                     zeitstr = f"{minuten}:{sekunden:02d}.{tausendstel:03d}"
                     neue_zeile = pd.DataFrame([{
@@ -104,7 +106,8 @@ def main():
                         "Tausendstel": tausendstel,
                         "Zeit (s)": zeit_in_sek,
                         "Zeitstr": zeitstr,
-                        "Erfasst am": jetzt
+                        "Erfasst am": jetzt,
+                        "Event": event
                     }])
                     df = pd.concat([df, neue_zeile], ignore_index=True)
                     speichere_zeiten(df)
@@ -146,8 +149,16 @@ def main():
         st.subheader("⏱️ Letzte 10 Rundenzeiten")
 
         fahrer_filter = st.multiselect("Filter nach Fahrer:", options=sorted(df["Fahrer"].unique()), default=None)
+        event_filter = st.multiselect("Filter nach Event:", options=sorted(df["Event"].unique()), default=None)
+
         sortierung = st.radio("Sortierung:", ["Neueste Einträge zuerst", "Schnellste Zeiten zuerst"], horizontal=True)
-        df_filtered = df[df["Fahrer"].isin(fahrer_filter)] if fahrer_filter else df
+        
+        df_filtered = df
+        if fahrer_filter:
+            df_filtered = df_filtered[df_filtered["Fahrer"].isin(fahrer_filter)]
+        if event_filter:
+            df_filtered = df_filtered[df_filtered["Event"].isin(event_filter)]
+
         df_anzeige = df_filtered.sort_values("Erfasst am", ascending=False) if sortierung=="Neueste Einträge zuerst" else df_filtered.sort_values("Zeit (s)", ascending=True)
         df_anzeige = df_anzeige.head(10)
 
@@ -156,7 +167,7 @@ def main():
             with col1:
                 st.markdown(
                     f'<div class="time-box">'
-                    f'<b>{row["Fahrer"]}</b><br>'
+                    f'<b>{row["Fahrer"]}</b> – <i>{row["Event"]}</i><br>'
                     f'⏱️ {row["Zeitstr"]} <span style="color:gray;font-size:12px;">({row["Erfasst am"]})</span>'
                     f'</div>', unsafe_allow_html=True
                 )
