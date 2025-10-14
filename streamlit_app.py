@@ -29,6 +29,22 @@ def main():
     st.set_page_config(page_title="RaceKino Rundenzeiten", layout="wide")
     df = lade_zeiten()
 
+    # Farbdesign & Überschrift
+    st.markdown("""
+    <style>
+    body { background-color: #0e0e0e; color: white; }
+    .block-container { max-width: 1100px; margin: auto; }
+    .title { background-color: #c20000; color: white; text-align: center; padding: 15px; border-radius: 12px; font-size: 32px; font-weight: bold; margin-bottom: 25px; }
+    .ranking-entry { padding: 8px; margin-bottom: 4px; border-radius: 8px; }
+    .gold { background-color: #FFD70033; }
+    .silver { background-color: #C0C0C033; }
+    .bronze { background-color: #CD7F3233; }
+    .time-box { background-color: #1b1b1b; padding: 10px; border-radius: 8px; margin-bottom: 8px; }
+    </style>
+    """, unsafe_allow_html=True)
+
+    st.markdown('<div class="title">🏁 RaceKino Rundenzeiten</div>', unsafe_allow_html=True)
+
     # ---------------- Eingabeformular ----------------
     st.subheader("🏎️ Neue Rundenzeit eintragen")
 
@@ -45,7 +61,6 @@ def main():
         index=0,
         key="fahrer_combined"
     )
-    # Benutzer kann neuen Namen eintippen, wenn er nicht in Liste ist
     fahrer_neu = col1.text_input("Neuen Namen eingeben (optional, überschreibt Auswahl)", value="", key="fahrer_neu")
     if fahrer_neu.strip():
         fahrer = fahrer_neu.strip()
