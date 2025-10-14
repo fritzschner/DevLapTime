@@ -10,7 +10,7 @@ from googleapiclient.http import MediaIoBaseDownload, MediaIoBaseUpload
 # -------------------------------------------------
 # 🔹 KONFIGURATION
 # -------------------------------------------------
-SCOPES = ["https://www.googleapis.com/auth/drive.file"]
+SCOPES = ["https://www.googleapis.com/auth/drive"]
 creds = Credentials.from_service_account_info(
     st.secrets["google_service_account"], scopes=SCOPES
 )
