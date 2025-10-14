@@ -1,12 +1,70 @@
-import streamlit as st
-import pandas as pd
-from datetime import datetime
+import io
 import os
 import time
+import pandas as pd
+import streamlit as st
+from datetime import datetime
+from google.oauth2.service_account import Credentials
+from googleapiclient.discovery import build
+from googleapiclient.http import MediaIoBaseUpload, MediaIoBaseDownload
 
-DATEIPFAD = "rundenzeiten.csv"
+# ============================================================
+# GOOGLE DRIVE VERBINDUNG
+# ============================================================
+SCOPES = ["https://www.googleapis.com/auth/drive"]
+creds = Credentials.from_service_account_info(st.secrets["google_service_account"], scopes=SCOPES)
+drive_service = build("drive", "v3", credentials=creds)
 
-# ------------------- Hilfsfunktionen -------------------
+# ------------------------------------------------------------
+# 📄 Datei-IDs (werden später ergänzt)
+# ------------------------------------------------------------
+RUNDEN_FILE_ID = "1bzYUWbUPjyY_IJMjmzWp7J1_Ud2xyyji"
+EVENTS_FILE_ID = "1XXZ8npAOg9h-AVpmpan2XgHmEHEbK99B"
+
+# ============================================================
+# HILFSFUNKTIONEN GOOGLE DRIVE
+# ============================================================
+def lade_csv(file_id):
+    try:
+        request = drive_service.files().get_media(fileId=file_id)
+        fh = io.BytesIO()
+        downloader = MediaIoBaseDownload(fh, request)
+        done = False
+        while not done:
+            status, done = downloader.next_chunk()
+        fh.seek(0)
+        return pd.read_csv(fh, sep=";")
+    except Exception:
+        return pd.DataFrame(columns=["Fahrer", "Minuten", "Sekunden", "Tausendstel", "Zeit (s)", "Zeitstr", "Erfasst am", "Event"])
+
+def speichere_csv(df, file_id):
+    buffer = io.BytesIO()
+    df.to_csv(buffer, sep=";", index=False)
+    buffer.seek(0)
+    media = MediaIoBaseUpload(buffer, mimetype="text/csv", resumable=True)
+    drive_service.files().update(fileId=file_id, media_body=media).execute()
+
+def lade_events(file_id):
+    try:
+        request = drive_service.files().get_media(fileId=file_id)
+        fh = io.BytesIO()
+        downloader = MediaIoBaseDownload(fh, request)
+        done = False
+        while not done:
+            status, done = downloader.next_chunk()
+        fh.seek(0)
+        return [e.strip() for e in fh.read().decode("utf-8").splitlines() if e.strip()]
+    except Exception:
+        return []
+
+def speichere_events(event_liste, file_id):
+    buffer = io.BytesIO("\n".join(event_liste).encode("utf-8"))
+    media = MediaIoBaseUpload(buffer, mimetype="text/plain", resumable=True)
+    drive_service.files().update(fileId=file_id, media_body=media).execute()
+
+# ============================================================
+# HILFSFUNKTIONEN ZEIT
+# ============================================================
 def zeit_zu_sekunden(minuten, sekunden, tausendstel):
     return minuten * 60 + sekunden + tausendstel / 1000
 
@@ -17,57 +75,49 @@ def sekunden_zu_zeitstr(sekunden):
     tausendstel = int(round((rest - sek) * 1000))
     return f"{minuten}:{sek:02d}.{tausendstel:03d}"
 
-def lade_zeiten():
-    if not os.path.exists(DATEIPFAD):
-        return pd.DataFrame(columns=["Fahrer", "Minuten", "Sekunden", "Tausendstel", "Zeit (s)", "Zeitstr", "Erfasst am", "Event"])
-    return pd.read_csv(DATEIPFAD, sep=";")
-
-def speichere_zeiten(df):
-    df.to_csv(DATEIPFAD, sep=";", index=False)
-
-# ------------------- Hauptfunktion -------------------
+# ============================================================
+# 🏁 HAUPTFUNKTION
+# ============================================================
 def main():
     st.set_page_config(page_title="RaceKino Rundenzeiten", layout="wide")
 
-    # Farbdesign & Überschrift
+    # DESIGN ---------------------------------------------------
     st.markdown("""
-    <style>
-    body { background-color: #0e0e0e; color: white; }
-    .block-container { max-width: 1100px; margin: auto; }
-    .title {
-        background-color: #c20000; color: white; text-align: center;
-        padding: 15px; border-radius: 12px; font-size: 32px; font-weight: bold; margin-bottom: 25px;
-    }
-    .ranking-entry { padding: 8px; margin-bottom: 4px; border-radius: 8px; }
-    .gold { background-color: #FFD700CC; color: black; }
-    .silver { background-color: #C0C0C0CC; color: black; }
-    .bronze { background-color: #CD7F32CC; color: white; }
-    .time-box { background-color: #1b1b1b; padding: 10px; border-radius: 8px; margin-bottom: 8px; }
-    </style>
+        <style>
+            body { background-color: #0e0e0e; color: white; }
+            .block-container { max-width: 1100px; margin: auto; }
+            .title { background-color: #c20000; color: white; text-align: center; padding: 15px; border-radius: 12px; font-size: 32px; font-weight: bold; margin-bottom: 25px; }
+            .ranking-entry { padding: 8px; margin-bottom: 4px; border-radius: 8px; }
+            .gold { background-color: #ffcc00aa; color: black; }
+            .silver { background-color: #c0c0ffcc; color: black; }
+            .bronze { background-color: #ff9933cc; color: white; }
+            .time-box { background-color: #1b1b1b; padding: 10px; border-radius: 8px; margin-bottom: 8px; }
+        </style>
     """, unsafe_allow_html=True)
-
     st.markdown('<div class="title">🏁 RaceKino Rundenzeiten</div>', unsafe_allow_html=True)
 
-    df = lade_zeiten()
+    # ============================================================
+    # 📂 Daten laden
+    # ============================================================
+    df = lade_csv(RUNDEN_FILE_ID)
+    events = lade_events(EVENTS_FILE_ID)
 
-    # ---------------- Event Filter ----------------
-    vorhandene_events = sorted(df["Event"].dropna().unique()) if not df.empty else []
-    if "event_neu" not in st.session_state:
-        st.session_state["event_neu"] = ""
+    # ============================================================
+    # 🎯 Event-Auswahl
+    # ============================================================
+    st.subheader("🎟️ Event auswählen")
+    selected_event = st.selectbox("Wähle ein Event:", options=events)
 
-    col_event1, col_event2 = st.columns([3, 2])
-    event_filter = col_event1.selectbox(
-        "🔹 Wähle ein Event",
-        options=vorhandene_events + ([st.session_state["event_neu"]] if st.session_state["event_neu"] else []),
-        index=0 if vorhandene_events else -1,
-        key="event_auswahl"
-    )
-    col_event2.text_input("Neues Event hinzufügen", key="event_neu")
+    if not selected_event:
+        st.warning("Bitte zuerst ein Event auswählen oder unten ein neues Event anlegen.")
+        st.stop()
 
-    # ---------------- Eingabeformular ----------------
+    # ============================================================
+    # 🏎️ Neue Rundenzeit eingeben
+    # ============================================================
     st.subheader("🏎️ Neue Rundenzeit eintragen")
 
-    if not st.session_state.get("zeit_input_temp"):
+    if "zeit_input_temp" not in st.session_state:
         st.session_state["zeit_input_temp"] = ""
 
     col1, col2 = st.columns([2, 2])
@@ -79,7 +129,7 @@ def main():
         key="zeit_input_field"
     )
 
-    # Live-Formatierung der Eingabe
+    # Liveformatierung
     if raw_input:
         clean = "".join(filter(str.isdigit, raw_input))
         formatted_input = ""
@@ -91,11 +141,8 @@ def main():
             formatted_input += clean[3:6]
         st.markdown(f"🕒 **Eingegebene Zeit:** {formatted_input}")
 
-    # Speichern-Button
     if st.button("💾 Hinzufügen", use_container_width=True):
-        if not event_filter:
-            st.warning("Bitte wähle zuerst ein Event aus.")
-        elif not fahrer:
+        if not fahrer:
             st.warning("Bitte Fahrername eingeben.")
         elif not raw_input.isdigit() or len(raw_input) != 6:
             st.warning("Bitte genau 6 Ziffern eingeben (Format M SS MMM).")
@@ -110,6 +157,7 @@ def main():
                     zeit_in_sek = zeit_zu_sekunden(minuten, sekunden, tausendstel)
                     jetzt = datetime.now().strftime("%d.%m.%Y %H:%M:%S")
                     zeitstr = f"{minuten}:{sekunden:02d}.{tausendstel:03d}"
+
                     neue_zeile = pd.DataFrame([{
                         "Fahrer": fahrer,
                         "Minuten": minuten,
@@ -118,18 +166,23 @@ def main():
                         "Zeit (s)": zeit_in_sek,
                         "Zeitstr": zeitstr,
                         "Erfasst am": jetzt,
-                        "Event": event_filter
+                        "Event": selected_event
                     }])
+
                     df = pd.concat([df, neue_zeile], ignore_index=True)
-                    speichere_zeiten(df)
+                    speichere_csv(df, RUNDEN_FILE_ID)
+
                     st.session_state["zeit_input_temp"] = ""
-                    st.success(f"✅ Zeit für {fahrer} unter Event '{event_filter}' gespeichert!")
+                    st.success(f"✅ Zeit für {fahrer} gespeichert!")
+
             except Exception as e:
                 st.error(f"Fehler beim Verarbeiten der Eingabe: {e}")
 
-    # ---------------- Rangliste ----------------
-    if not df.empty and event_filter:
-        df_event = df[df["Event"] == event_filter]
+    # ============================================================
+    # 🏆 Rangliste
+    # ============================================================
+    df_event = df[df["Event"] == selected_event]
+    if not df_event.empty:
         rangliste = []
         for name, gruppe in df_event.groupby("Fahrer"):
             beste3 = gruppe["Zeit (s)"].nsmallest(3)
@@ -141,7 +194,7 @@ def main():
                     "Wert": avg
                 })
         if rangliste:
-            st.subheader(f"🏆 Rangliste für Event: {event_filter}")
+            st.subheader(f"🏆 Rangliste ({selected_event})")
             rang_df = pd.DataFrame(rangliste).sort_values("Wert").reset_index(drop=True)
             rang_df["Platz"] = rang_df.index + 1
             for _, row in rang_df.iterrows():
@@ -149,65 +202,40 @@ def main():
                 st.markdown(
                     f'<div class="ranking-entry {style}">'
                     f'<b>{row["Platz"]}. {row["Fahrer"]}</b> – {row["Durchschnitt (Top 3)"]}'
-                    f'</div>', unsafe_allow_html=True
+                    f'</div>',
+                    unsafe_allow_html=True
                 )
-            csv_rang = rang_df[["Platz", "Fahrer", "Durchschnitt (Top 3)"]].to_csv(index=False, sep=";").encode("utf-8")
-            st.download_button("📥 Rangliste als CSV", csv_rang, "rangliste.csv", "text/csv", use_container_width=True)
+
+    # ============================================================
+    # ⏱️ Letzte 10 Zeiten (gefiltert nach Event)
+    # ============================================================
+    st.subheader(f"⏱️ Letzte 10 Rundenzeiten ({selected_event})")
+    df_event_sorted = df_event.sort_values("Erfasst am", ascending=False).head(10)
+    for _, row in df_event_sorted.iterrows():
+        st.markdown(
+            f'<div class="time-box">'
+            f'<b>{row["Fahrer"]}</b> – {row["Zeitstr"]} '
+            f'<span style="color:gray;font-size:12px;">({row["Erfasst am"]})</span>'
+            f'</div>',
+            unsafe_allow_html=True
+        )
+
+    # ============================================================
+    # ➕ Neues Event anlegen
+    # ============================================================
+    st.subheader("➕ Neues Event hinzufügen")
+    new_event = st.text_input("Eventname eingeben:")
+    if st.button("📁 Event speichern"):
+        if new_event and new_event not in events:
+            events.append(new_event)
+            speichere_events(events, EVENTS_FILE_ID)
+            st.success("✅ Neues Event gespeichert! Bitte App neu laden.")
         else:
-            st.info("Mindestens ein Fahrer braucht 3 Zeiten für die Rangliste.")
+            st.warning("Eventname ist leer oder existiert bereits.")
 
-    # ---------------- Letzte 10 Rundenzeiten ----------------
-    if not df.empty and event_filter:
-        st.subheader(f"⏱️ Letzte 10 Rundenzeiten für Event: {event_filter}")
-        df_event = df[df["Event"] == event_filter]
-        fahrer_filter = st.multiselect("Filter nach Fahrer:", options=sorted(df_event["Fahrer"].unique()), default=None)
-        sortierung = st.radio("Sortierung:", ["Neueste Einträge zuerst", "Schnellste Zeiten zuerst"], horizontal=True)
-        df_filtered = df_event[df_event["Fahrer"].isin(fahrer_filter)] if fahrer_filter else df_event
-        df_anzeige = df_filtered.sort_values("Erfasst am", ascending=False) if sortierung=="Neueste Einträge zuerst" else df_filtered.sort_values("Zeit (s)", ascending=True)
-        df_anzeige = df_anzeige.head(10)
-
-        for idx, row in df_anzeige.iterrows():
-            col1, col2 = st.columns([6, 1])
-            with col1:
-                st.markdown(
-                    f'<div class="time-box">'
-                    f'<b>{row["Fahrer"]}</b> – <i>{row["Event"]}</i><br>'
-                    f'⏱️ {row["Zeitstr"]} <span style="color:gray;font-size:12px;">({row["Erfasst am"]})</span>'
-                    f'</div>', unsafe_allow_html=True
-                )
-            with col2:
-                if st.button("🗑️", key=f"del_{row.name}", help="Diesen Eintrag löschen"):
-                    df = df.drop(row.name).reset_index(drop=True)
-                    speichere_zeiten(df)
-                    st.success("✅ Eintrag gelöscht!")
-
-        col_a, col_b = st.columns(2)
-        with col_a:
-            csv_zeiten = df_event.to_csv(index=False, sep=";").encode("utf-8")
-            st.download_button("📥 Alle Zeiten als CSV", csv_zeiten, "rundenzeiten.csv", "text/csv", use_container_width=True)
-
-        with col_b:
-            if st.session_state.get("show_delete_all_confirm") is None:
-                st.session_state["show_delete_all_confirm"] = False
-            if not st.session_state["show_delete_all_confirm"]:
-                if st.button("🗑️ Alle Rundenzeiten für Event löschen", use_container_width=True):
-                    st.session_state["show_delete_all_confirm"] = True
-            else:
-                st.warning("⚠️ Willst du wirklich alle Zeiten für dieses Event löschen?")
-                col_yes, col_no = st.columns(2)
-                with col_yes:
-                    if st.button("🗑️ Ja, löschen", key="delete_all_confirm", use_container_width=True):
-                        df = df[df["Event"] != event_filter]
-                        speichere_zeiten(df)
-                        st.session_state["show_delete_all_confirm"] = False
-                        st.success("🗑️ Alle Zeiten für Event gelöscht.")
-                with col_no:
-                    if st.button("❌ Abbrechen", key="cancel_delete_all", use_container_width=True):
-                        st.session_state["show_delete_all_confirm"] = False
-                        st.info("Löschvorgang abgebrochen.")
-    else:
-        st.info("Noch keine Rundenzeiten erfasst oder kein Event ausgewählt.")
-
-# ------------------- Start -------------------
+# ============================================================
+# START
+# ============================================================
 if __name__ == "__main__":
     main()
+    
