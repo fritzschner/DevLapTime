@@ -115,7 +115,6 @@ def main():
 
     with col_button:
         st.write("")  # Abstand
-        st.write("")  # Abstand
         if st.button("💾 Hinzufügen", use_container_width=True):
             if not fahrer:
                 st.warning("Bitte Fahrername eingeben.")
