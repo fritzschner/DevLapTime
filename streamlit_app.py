@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 import os
-import time
 
 DATEIPFAD = "rundenzeiten.csv"
 
@@ -28,26 +27,6 @@ def speichere_zeiten(df):
 # ------------------- Hauptfunktion -------------------
 def main():
     st.set_page_config(page_title="RaceKino Rundenzeiten", layout="wide")
-
-    # Farbdesign & Überschrift
-    st.markdown("""
-    <style>
-    body { background-color: #0e0e0e; color: white; }
-    .block-container { max-width: 1100px; margin: auto; }
-    .title {
-        background-color: #c20000; color: white; text-align: center;
-        padding: 15px; border-radius: 12px; font-size: 32px; font-weight: bold; margin-bottom: 25px;
-    }
-    .ranking-entry { padding: 8px; margin-bottom: 4px; border-radius: 8px; }
-    .gold { background-color: #FFD70033; }
-    .silver { background-color: #C0C0C033; }
-    .bronze { background-color: #CD7F3233; }
-    .time-box { background-color: #1b1b1b; padding: 10px; border-radius: 8px; margin-bottom: 8px; }
-    </style>
-    """, unsafe_allow_html=True)
-
-    st.markdown('<div class="title">🏁 RaceKino Rundenzeiten</div>', unsafe_allow_html=True)
-
     df = lade_zeiten()
 
     # ---------------- Eingabeformular ----------------
@@ -58,20 +37,18 @@ def main():
 
     col1, col2 = st.columns([2, 2])
 
-    # --- Fahrernamenselektion mit freier Eingabe ---
+    # --- Kombiniertes Fahrernamensfeld ---
     vorhandene_fahrer = sorted(df["Fahrer"].unique()) if not df.empty else []
-    fahrer_option = col1.selectbox(
-        "Fahrername auswählen",
+    fahrer = col1.selectbox(
+        "Fahrername auswählen oder neu eingeben",
         options=[""] + vorhandene_fahrer,
         index=0,
-        key="fahrer_select"
+        key="fahrer_combined"
     )
-    fahrer_input = col1.text_input(
-        "Oder neuen Fahrername eingeben",
-        value="",
-        key="fahrer_input"
-    )
-    fahrer = fahrer_input if fahrer_input else fahrer_option
+    # Benutzer kann neuen Namen eintippen, wenn er nicht in Liste ist
+    fahrer_neu = col1.text_input("Neuen Namen eingeben (optional, überschreibt Auswahl)", value="", key="fahrer_neu")
+    if fahrer_neu.strip():
+        fahrer = fahrer_neu.strip()
 
     # --- Zeiteneingabe ---
     raw_input = col2.text_input(
