@@ -20,7 +20,6 @@ def sekunden_zu_zeitstr(sekunden):
 def lade_zeiten():
     if not os.path.exists(DATEIPFAD):
         return pd.DataFrame(columns=["Fahrer", "Minuten", "Sekunden", "Tausendstel", "Zeit (s)", "Zeitstr", "Erfasst am"])
-    # beim Einlesen Index beibehalten (Standard) — wichtig für korrektes Löschen
     df = pd.read_csv(DATEIPFAD, sep=";", encoding="utf-8")
     return df
 
@@ -54,40 +53,34 @@ def main():
     # Session state defaults (für Input-Steuerung / Delete confirm)
     if "show_delete_all_confirm" not in st.session_state:
         st.session_state["show_delete_all_confirm"] = False
-    if "zeit_input" not in st.session_state:
-        st.session_state["zeit_input"] = ""  # raw numeric input (max 6 digits)
-    if "fahrer_input" not in st.session_state:
-        st.session_state["fahrer_input"] = ""
+    # Keys für die tatsächlichen Text-Inputs (verwende diese Keys, damit wir sie gezielt leeren können)
+    if "zeit_input_field" not in st.session_state:
+        st.session_state["zeit_input_field"] = ""
+    if "fahrer_input_field" not in st.session_state:
+        st.session_state["fahrer_input_field"] = ""
 
     # ---------------- Eingabeformular ----------------
     with st.form("eingabe_formular"):
         col1, col2 = st.columns([2, 2])
-        # Fahrername - kontrolliertes Feld, um es nach Save leeren zu können
-        fahrer = col1.text_input("Fahrername", value=st.session_state["fahrer_input"], key="fahrer_input_field")
-        # Zeit-Eingabe - kontrolliertes Feld
-        raw = col2.text_input("6 Ziffern eingeben (Format: M SS MMM)", value=st.session_state["zeit_input"], max_chars=6, key="zeit_input_field")
+        # Fahrername - kontrolliertes Feld
+        fahrer = col1.text_input("Fahrername", value=st.session_state["fahrer_input_field"], key="fahrer_input_field")
+        # Zeit-Eingabe - kontrolliertes Feld (nur Ziffern)
+        raw = col2.text_input("6 Ziffern eingeben (Format: M SS MMM)", value=st.session_state["zeit_input_field"], max_chars=6, key="zeit_input_field")
 
-        # Synchronisiere session_state mit Feldwert (wichtig, damit wir es nach Save löschen können)
-        st.session_state["zeit_input"] = raw
-        st.session_state["fahrer_input"] = fahrer
+        # Synchronisiere session_state (wichtig für das Leeren weiter unten)
+        st.session_state["zeit_input_field"] = raw
+        st.session_state["fahrer_input_field"] = fahrer
 
         # Live-formatierung (sichtbar schon beim Tippen)
         formatted = ""
         if raw and raw.isdigit():
             # Minute (erste Ziffer) + :
             if len(raw) >= 1:
-                formatted += raw[0] + ":"
-            # Sekunden (Ziffer 1-2)
-            if len(raw) >= 2:
-                # wenn nur eine Sek.-Ziffer vorhanden, zeige diese (ohne Punkt)
-                if len(raw) == 2:
-                    formatted += raw[1]
-                else:
-                    formatted += raw[1:3]
-            # Punkt und Tausendstel (wenn vorhanden)
-            if len(raw) >= 3:
-                # After we have two second digits (len>=3), we show the dot and whatever ms digits exist
-                # ensure the dot appears only once seconds are complete (i.e., at least 3 digits in total)
+                formatted = raw[0] + ":"
+            # Sekunden (bis 2 Ziffern)
+            if len(raw) == 2:
+                formatted += raw[1]
+            elif len(raw) >= 3:
                 formatted = raw[0] + ":" + raw[1:3] + "."
                 if len(raw) > 3:
                     formatted += raw[3:6]
@@ -99,8 +92,8 @@ def main():
 
         if abgeschickt:
             # Re-read latest values from session state to be safe
-            raw_val = st.session_state.get("zeit_input", "")
-            fahrer_val = st.session_state.get("fahrer_input", "").strip()
+            raw_val = st.session_state.get("zeit_input_field", "")
+            fahrer_val = st.session_state.get("fahrer_input_field", "").strip()
 
             if not fahrer_val:
                 st.warning("Bitte Fahrername eingeben.")
@@ -129,11 +122,11 @@ def main():
                         # An df anhängen und speichern
                         df = pd.concat([df, neue_zeile], ignore_index=True)
                         speichere_zeiten(df)
-                        # Eingabefelder automatisch leeren
-                        st.session_state["zeit_input"] = ""
-                        st.session_state["fahrer_input"] = ""
-                        # synchronisiere Textfelder (setzten der Keys)
-                        st.experimental_set_query_params()  # kein Effekt, aber hilft UI zu refreshen
+
+                        # Eingabefelder automatisch leeren über session_state (kein Query-Param Refresh!)
+                        st.session_state["zeit_input_field"] = ""
+                        st.session_state["fahrer_input_field"] = ""
+
                         st.success("✅ Zeit hinzugefügt.")
                         time.sleep(0.4)
                         st.rerun()
@@ -177,7 +170,7 @@ def main():
         # Sort option
         sortierung = st.radio("Sortierung:", ["Neueste Einträge zuerst", "Schnellste Zeiten zuerst"], horizontal=True)
 
-        # Filter anwenden (ohne Index reset — wir behalten Originalindex!)
+        # Filter anwenden (behalte Originalindex, wichtig für korrektes Löschen)
         if fahrer_filter:
             df_filtered = df[df["Fahrer"].isin(fahrer_filter)]
         else:
@@ -185,7 +178,6 @@ def main():
 
         # Sortierung — bei Erfasst am als Datum sortieren (robuster)
         if sortierung == "Neueste Einträge zuerst":
-            # parse datetime safely (if parsing fails, fall back auf string sort)
             try:
                 df_filtered["Erfasst_parsed"] = pd.to_datetime(df_filtered["Erfasst am"], format="%d.%m.%Y %H:%M:%S", errors="coerce")
                 df_sorted = df_filtered.sort_values("Erfasst_parsed", ascending=False)
@@ -198,7 +190,6 @@ def main():
         df_anzeige = df_sorted.head(10)
 
         for _, row in df_anzeige.iterrows():
-            # row.name is original index in df (works because we didn't reset index)
             col1, col2 = st.columns([6, 1])
             with col1:
                 st.markdown(
@@ -206,7 +197,6 @@ def main():
                     unsafe_allow_html=True,
                 )
             with col2:
-                # Use row.name as key so deletion targets original df index
                 key = f"del_{row.name}"
                 if st.button("🗑️", key=key, help="Diesen Eintrag löschen"):
                     # delete by original index
