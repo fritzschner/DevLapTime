@@ -99,43 +99,50 @@ def main():
 
     # ---- Neue Rundenzeit eintragen ----
     st.subheader("🏎️ Neue Rundenzeit eintragen")
-    fahrer = st.text_input("Fahrername")
-    raw_input = st.text_input("6 Ziffern eingeben (Format: MSSTTT)", max_chars=6)
 
-    if raw_input:
-        clean = "".join(filter(str.isdigit, raw_input))
-        formatted = f"{clean[0]}:{clean[1:3]}.{clean[3:6]}" if len(clean) >= 6 else ""
-        st.markdown(f"🕒 **Eingegebene Zeit:** {formatted}")
+    # Spalten für Fahrername, Zeit und Button
+    col_fahrer, col_zeit, col_button = st.columns([3, 2, 1])
 
-    if st.button("💾 Hinzufügen", use_container_width=True):
-        if not fahrer:
-            st.warning("Bitte Fahrername eingeben.")
-        elif not raw_input.isdigit() or len(raw_input) != 6:
-            st.warning("Bitte genau 6 Ziffern eingeben (Format M SS MMM).")
-        else:
-            minuten = int(raw_input[0])
-            sekunden = int(raw_input[1:3])
-            tausendstel = int(raw_input[3:6])
-            if sekunden > 59 or tausendstel > 999:
-                st.error("Ungültige Zeit.")
+    with col_fahrer:
+        fahrer = st.text_input("Fahrername")
+
+    with col_zeit:
+        raw_input = st.text_input("6 Ziffern (MSSTTT)", max_chars=6)
+        if raw_input:
+            clean = "".join(filter(str.isdigit, raw_input))
+            formatted = f"{clean[0]}:{clean[1:3]}.{clean[3:6]}" if len(clean) >= 6 else ""
+            st.markdown(f"🕒 **Eingegebene Zeit:** {formatted}")
+
+    with col_button:
+        if st.button("💾 Hinzufügen", use_container_width=True):
+            if not fahrer:
+                st.warning("Bitte Fahrername eingeben.")
+            elif not raw_input.isdigit() or len(raw_input) != 6:
+                st.warning("Bitte genau 6 Ziffern eingeben (Format M SS MMM).")
             else:
-                zeit_in_sek = zeit_zu_sekunden(minuten, sekunden, tausendstel)
-                jetzt = datetime.now(MEZ).strftime("%d.%m.%Y %H:%M:%S")
-                zeitstr = f"{minuten}:{sekunden:02d}.{tausendstel:03d}"
+                minuten = int(raw_input[0])
+                sekunden = int(raw_input[1:3])
+                tausendstel = int(raw_input[3:6])
+                if sekunden > 59 or tausendstel > 999:
+                    st.error("Ungültige Zeit.")
+                else:
+                    zeit_in_sek = zeit_zu_sekunden(minuten, sekunden, tausendstel)
+                    jetzt = datetime.now(MEZ).strftime("%d.%m.%Y %H:%M:%S")
+                    zeitstr = f"{minuten}:{sekunden:02d}.{tausendstel:03d}"
 
-                neue_zeile = pd.DataFrame([{
-                    "Fahrer": fahrer,
-                    "Minuten": minuten,
-                    "Sekunden": sekunden,
-                    "Tausendstel": tausendstel,
-                    "Zeit (s)": zeit_in_sek,
-                    "Zeitstr": zeitstr,
-                    "Erfasst am": jetzt,
-                    "Event": event_filter
-                }])
-                df = pd.concat([df, neue_zeile], ignore_index=True)
-                speichere_csv(df, RUNDENZEITEN_FILE_ID)
-                st.success(f"✅ Zeit für {fahrer} unter Event '{event_filter}' gespeichert!")
+                    neue_zeile = pd.DataFrame([{
+                        "Fahrer": fahrer,
+                        "Minuten": minuten,
+                        "Sekunden": sekunden,
+                        "Tausendstel": tausendstel,
+                        "Zeit (s)": zeit_in_sek,
+                        "Zeitstr": zeitstr,
+                        "Erfasst am": jetzt,
+                        "Event": event_filter
+                    }])
+                    df = pd.concat([df, neue_zeile], ignore_index=True)
+                    speichere_csv(df, RUNDENZEITEN_FILE_ID)
+                    st.success(f"✅ Zeit für {fahrer} unter Event '{event_filter}' gespeichert!")
 
     # ---- Rangliste ----
     df_event = df[df["Event"] == event_filter]
