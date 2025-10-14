@@ -108,6 +108,11 @@ def main():
                     speichere_zeiten(df)
                     st.session_state["zeit_input_temp"] = ""  # Eingabe zurücksetzen
                     st.success(f"✅ Zeit für {fahrer} gespeichert!")
+
+                    # 1 Sekunde warten und die Anzeige automatisch aktualisieren
+                    time.sleep(1)
+                    df = lade_zeiten()  # CSV neu laden, um die Liste zu aktualisieren
+
             except Exception as e:
                 st.error(f"Fehler beim Verarbeiten der Eingabe: {e}")
 
