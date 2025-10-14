@@ -65,12 +65,16 @@ def main():
     if "zeit_input_temp" not in st.session_state:
         st.session_state["zeit_input_temp"] = ""
 
-    raw_input = col2.text_input(
-        "6 Ziffern eingeben (Format: MSSTTT)",
-        value=st.session_state["zeit_input_temp"],
-        max_chars=6,
-        key="zeit_input_field"
-    )
+    # Vorher
+        raw_input = col2.text_input(
+            "6 Ziffern eingeben (Format: MSSTTT)",
+            value=st.session_state.get("zeit_input_temp", ""),
+            max_chars=6,
+            key="zeit_input_field"
+        )
+
+        # Nach dem Speichern
+        st.session_state["zeit_input_temp"] = ""  # Feld wird beim nächsten Rendern geleert
 
     # Live-Formatierung
     formatted_input = ""
