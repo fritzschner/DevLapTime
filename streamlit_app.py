@@ -114,6 +114,7 @@ def main():
             st.markdown(f"🕒 **Eingegebene Zeit:** {formatted}")
 
     with col_button:
+        st.write("")  # Abstand
         if st.button("💾 Hinzufügen", use_container_width=True):
             if not fahrer:
                 st.warning("Bitte Fahrername eingeben.")
