@@ -224,6 +224,7 @@ def main():
         best_text = " <b>(Persönliche Bestzeit)</b>" if ist_bestzeit else ""
         zeit_html = f"⭐ <b>{row['Zeitstr']}</b>" if ist_top3 else row["Zeitstr"]
 
+        col1, col2 = st.columns([4, 1])
         with col1:
             st.markdown(
                 f'<div class="time-box" style="{box_style}">'
