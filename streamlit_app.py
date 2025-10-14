@@ -80,8 +80,8 @@ def main():
         fahrer = col1.text_input("Fahrername")
 
         with col2:
-            st.markdown("**Rundenzeit eingeben:**")
-            zeit_input = st.text_input("Format m:sss:ttt (ohne Trennzeichen)", max_chars=6)
+            st.markdown("**Rundenzeit eingeben (ohne Trennzeichen):**")
+            zeit_input = st.text_input("z. B. 125512 → 1:25.512 oder 059123 → 0:59.123", max_chars=6)
 
             # Live-Vorschau der interpretierten Zeit
             if zeit_input.isdigit() and len(zeit_input) == 6:
@@ -174,22 +174,33 @@ def main():
         else:
             st.info("Mindestens ein Fahrer braucht 3 Zeiten für die Rangliste.")
 
-    # ---------------- Letzte Zeiten ----------------
+    # ---------------- Filter und letzte Zeiten ----------------
     if not df.empty:
         st.subheader("⏱️ Letzte 10 Rundenzeiten")
 
+        # Fahrer-Filter
+        fahrer_filter = st.multiselect(
+            "Filter nach Fahrer:",
+            options=sorted(df["Fahrer"].unique()),
+            default=None
+        )
+
+        # Sortierung
         sortierung = st.radio(
             "Sortierung:",
             ["Neueste Einträge zuerst", "Schnellste Zeiten zuerst"],
             horizontal=True,
         )
 
-        if sortierung == "Neueste Einträge zuerst":
-            df_anzeige = df.sort_values("Erfasst am", ascending=False)
-        else:
-            df_anzeige = df.sort_values("Zeit (s)", ascending=True)
+        # Gefiltertes DataFrame
+        df_filtered = df[df["Fahrer"].isin(fahrer_filter)] if fahrer_filter else df
 
-        df_anzeige = df_anzeige.head(10)  # die letzten 10 für die Anzeige
+        if sortierung == "Neueste Einträge zuerst":
+            df_anzeige = df_filtered.sort_values("Erfasst am", ascending=False)
+        else:
+            df_anzeige = df_filtered.sort_values("Zeit (s)", ascending=True)
+
+        df_anzeige = df_anzeige.head(10)  # letzte 10 Einträge
 
         for idx, row in df_anzeige.iterrows():
             col1, col2 = st.columns([6, 1])
