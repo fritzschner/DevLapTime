@@ -180,17 +180,9 @@ def main():
         else:
             st.info("Mindestens 3 Zeiten pro Fahrer erforderlich.")
 
-    # ---- Bestzeiten ermitteln (vor Anzeige) ----
-    top3_dict = {}
-    best_dict = {}
-    for name, gruppe in df_event.groupby("Fahrer"):
-        sortiert = gruppe.sort_values("Zeit (s)")
-        best_dict[name] = sortiert.iloc[0]["Zeit (s)"] if not sortiert.empty else None
-        top3_dict[name] = set(sortiert["Zeit (s)"].nsmallest(3))
-
-    # ---- Letzte/Beste Rundenzeiten ----
-    df_anzeige = pd.DataFrame()  # Standardwert, falls nichts gefiltert wird
+    # ---- Letzte Rundenzeiten ----
     if not df.empty and event_filter:
+        st.subheader(f"⏱️ Letzte/Beste Rundenzeiten für Event: {event_filter}")
         df_event = df[df["Event"] == event_filter]
 
         # ---- Dynamische Hintergrundfarbe abhängig vom Theme ----
@@ -206,81 +198,60 @@ def main():
             padding: 10px;
             border-radius: 8px;
             margin-bottom: 8px;
-            word-wrap: break-word;
-        }}
-        @media (min-width: 768px) {{
-            .responsive-row {{
-                display: flex;
-                gap: 10px;
-            }}
-            .responsive-col {{
-                flex: 1;
-            }}
         }}
         </style>
         """, unsafe_allow_html=True)
 
-        fahrer_filter = st.multiselect(
-            "Filter nach Fahrer:",
-            options=sorted(df_event["Fahrer"].unique()),
-            default=None
-        )
-        sortierung = st.radio(
-            "Sortierung:",
-            ["Neueste Einträge zuerst", "Schnellste Zeiten zuerst"],
-            horizontal=True
-        )
+        fahrer_filter = st.multiselect("Filter nach Fahrer:", options=sorted(df_event["Fahrer"].unique()), default=None)
+        sortierung = st.radio("Sortierung:", ["Neueste Einträge zuerst", "Schnellste Zeiten zuerst"], horizontal=True)
 
         df_filtered = df_event[df_event["Fahrer"].isin(fahrer_filter)] if fahrer_filter else df_event
-        df_anzeige = df_filtered.sort_values(
-            "Erfasst am", ascending=False
-        ) if sortierung == "Neueste Einträge zuerst" else df_filtered.sort_values("Zeit (s)")
+        df_anzeige = df_filtered.sort_values("Erfasst am", ascending=False) if sortierung == "Neueste Einträge zuerst" else df_filtered.sort_values("Zeit (s)")
         anzahl = st.slider("Anzahl angezeigter Zeiten", 5, 50, 10)
         df_anzeige = df_anzeige.head(anzahl)
 
-    # ---- Responsive Anzeige der Rundenzeiten ----
-    if not df_anzeige.empty:
-        st.subheader(f"⏱️ Letzte/Beste Rundenzeiten für Event: {event_filter}")
+    # ---- Bestzeiten ermitteln ----
+    top3_dict = {}
+    best_dict = {}
+    for name, gruppe in df_event.groupby("Fahrer"):
+        sortiert = gruppe.sort_values("Zeit (s)")
+        best_dict[name] = sortiert.iloc[0]["Zeit (s)"] if not sortiert.empty else None
+        top3_dict[name] = set(sortiert["Zeit (s)"].nsmallest(3))
 
-        # Bestzeiten vorbereiten
-        top3_dict = {}
-        best_dict = {}
-        for name, gruppe in df_event.groupby("Fahrer"):
-            sortiert = gruppe.sort_values("Zeit (s)")
-            best_dict[name] = sortiert.iloc[0]["Zeit (s)"] if not sortiert.empty else None
-            top3_dict[name] = set(sortiert["Zeit (s)"].nsmallest(3))
+    for idx, row in df_anzeige.iterrows():
+        col1, col2 = st.columns([6, 1])
 
-        for idx, row in df_anzeige.iterrows():
-            # Prüfen, ob persönliche Bestzeit oder Top-3
-            ist_bestzeit = row["Fahrer"] in best_dict and abs(row["Zeit (s)"] - best_dict.get(row["Fahrer"], float("inf"))) < 0.0001
-            ist_top3 = row["Zeit (s)"] in top3_dict.get(row["Fahrer"], set())
+        # Prüfen, ob persönliche Bestzeit oder Top-3
+        ist_bestzeit = abs(row["Zeit (s)"] - best_dict.get(row["Fahrer"], float("inf"))) < 0.0001
+        ist_top3 = row["Zeit (s)"] in top3_dict.get(row["Fahrer"], set())
 
-            # Stil abhängig vom Status
-            box_style = "background-color: #fff9b1; color: black;" if ist_bestzeit else ""
-            best_text = " <b>(Persönliche Bestzeit)</b>" if ist_bestzeit else ""
-            zeit_html = f"⭐ <b>{row['Zeitstr']}</b>" if ist_top3 else row["Zeitstr"]
+        # Stil abhängig vom Status
+        if ist_bestzeit:
+            box_style = "background-color: #fff9b1; color: black;"  # Hellgelb mit schwarzer Schrift
+            best_text = " <b>(Persönliche Bestzeit)</b>"
+        else:
+            box_style = ""
+            best_text = ""
 
-            # Responsive Layout: zwei Spalten (Zeit + Buttons)
+        # Zeitdarstellung – Sternsymbol für Top-3
+        zeit_html = f"⭐ <b>{row['Zeitstr']}</b>" if ist_top3 else row["Zeitstr"]
+
+        with col1:
             st.markdown(
-                f'<div class="responsive-row">'
-                f'  <div class="responsive-col time-box" style="{box_style}">'
-                f'    <b>{row["Fahrer"]}</b> – <i>{row["Event"]}</i><br>'
-                f'    ⏱️ {zeit_html}{best_text} '
-                f'    <span style="color:gray;font-size:12px;">({row["Erfasst am"]})</span>'
-                f'  </div>'
-                f'  <div class="responsive-col">'
-                f'    <button onclick="document.getElementById(\'del_{row.name}\').click()" style="width:100%; padding:10px;">🗑️</button>'
-                f'    <st-button id="del_{row.name}" style="display:none;">Delete</st-button>'
-                f'  </div>'
+                f'<div class="time-box" style="{box_style}">'
+                f'<b>{row["Fahrer"]}</b> – <i>{row["Event"]}</i><br>'
+                f'⏱️ {zeit_html}{best_text} '
+                f'<span style="color:gray;font-size:12px;">({row["Erfasst am"]})</span>'
                 f'</div>',
                 unsafe_allow_html=True
             )
 
-        if st.button("🗑️", key=f"del_{row.name}", help="Diesen Eintrag löschen"):
-            df = df.drop(row.name).reset_index(drop=True)
-            speichere_csv(df, RUNDENZEITEN_FILE_ID)
-            st.success("✅ Eintrag gelöscht!")
-
+        with col2:
+            if st.button("🗑️", key=f"del_{row.name}", help="Diesen Eintrag löschen"):
+                df = df.drop(row.name).reset_index(drop=True)
+                speichere_csv(df, RUNDENZEITEN_FILE_ID)
+                st.success("✅ Eintrag gelöscht!")
+                
     # --- Buttons für Download & Alle löschen außerhalb der Schleife ---
     col_a, col_b = st.columns(2)
     with col_a:
