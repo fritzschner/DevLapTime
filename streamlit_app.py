@@ -97,14 +97,6 @@ def main():
     st.markdown('<div class="title">🏁 RaceKino Rundenzeiten</div>', unsafe_allow_html=True)
 
     # ============================================================
-    # 🔐 PASSWORTABFRAGE
-    # ============================================================
-    password = st.text_input("🔒 Passwort eingeben, um fortzufahren:", type="password")
-    if password != st.secrets.get("app_password", "racekino"):
-        st.warning("Bitte Passwort eingeben, um fortzufahren.")
-        st.stop()
-
-    # ============================================================
     # 📂 Daten laden
     # ============================================================
     df = lade_csv(RUNDEN_FILE_ID)
