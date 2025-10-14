@@ -180,28 +180,36 @@ def main():
         else:
             st.info("Mindestens 3 Zeiten pro Fahrer erforderlich.")
 
-    # ---- Letzte Rundenzeiten ----
+    # ---- Letzte Rundenzeiten responsive ----
     if not df.empty and event_filter:
         st.subheader(f"⏱️ Letzte/Beste Rundenzeiten für Event: {event_filter}")
         df_event = df[df["Event"] == event_filter]
 
-        # ---- Dynamische Hintergrundfarbe abhängig vom Theme ----
-        theme_base = st.get_option("theme.base")  # "light" oder "dark"
-        timebox_bg = "#f0f0f0" if theme_base == "light" else "#1b1b1b"
-        timebox_color = "black" if theme_base == "light" else "white"
-
-        st.markdown(f"""
+        # ---- Dynamisches CSS für responsive Zeitboxen ----
+        st.markdown("""
         <style>
-        .time-box {{
-            background-color: {timebox_bg};
-            color: {timebox_color};
+        .time-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .time-box {
+            flex: 1 1 250px;  /* Min width 250px, growable */
+            background-color: #1b1b1b;
+            color: white;
             padding: 10px;
             border-radius: 8px;
             margin-bottom: 8px;
-        }}
+        }
+        @media (max-width: 600px) {
+            .time-box {
+                flex: 1 1 100%;
+            }
+        }
         </style>
         """, unsafe_allow_html=True)
 
+        # Filter & Sortierung
         fahrer_filter = st.multiselect("Filter nach Fahrer:", options=sorted(df_event["Fahrer"].unique()), default=None)
         sortierung = st.radio("Sortierung:", ["Neueste Einträge zuerst", "Schnellste Zeiten zuerst"], horizontal=True)
 
@@ -210,6 +218,26 @@ def main():
         anzahl = st.slider("Anzahl angezeigter Zeiten", 5, 50, 10)
         df_anzeige = df_anzeige.head(anzahl)
 
+        # ---- Anzeige in flexiblen Boxen ----
+        st.markdown('<div class="time-container">', unsafe_allow_html=True)
+        for idx, row in df_anzeige.iterrows():
+            # Persönliche Bestzeit oder Top-3
+            ist_bestzeit = abs(row["Zeit (s)"] - best_dict.get(row["Fahrer"], float("inf"))) < 0.0001
+            ist_top3 = row["Zeit (s)"] in top3_dict.get(row["Fahrer"], set())
+
+            box_style = "background-color: #fff9b1; color: black;" if ist_bestzeit else ""
+            best_text = " <b>(Persönliche Bestzeit)</b>" if ist_bestzeit else ""
+            zeit_html = f"⭐ <b>{row['Zeitstr']}</b>" if ist_top3 else row["Zeitstr"]
+
+            st.markdown(
+                f'<div class="time-box" style="{box_style}">'
+                f'<b>{row["Fahrer"]}</b> – <i>{row["Event"]}</i><br>'
+                f'⏱️ {zeit_html}{best_text} '
+                f'<span style="color:gray;font-size:12px;">({row["Erfasst am"]})</span>'
+                f'</div>',
+                unsafe_allow_html=True
+            )
+        st.markdown('</div>', unsafe_allow_html=True)
 
     # ---- Bestzeiten ermitteln ----
     top3_dict = {}
@@ -252,7 +280,7 @@ def main():
                 df = df.drop(row.name).reset_index(drop=True)
                 speichere_csv(df, RUNDENZEITEN_FILE_ID)
                 st.success("✅ Eintrag gelöscht!")
-                
+
     # --- Buttons für Download & Alle löschen außerhalb der Schleife ---
     col_a, col_b = st.columns(2)
     with col_a:
