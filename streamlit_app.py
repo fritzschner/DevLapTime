@@ -80,13 +80,25 @@ def main():
 
         with col2:
             st.markdown("**Rundenzeit einstellen:**")
+
+            # --- Minuten ---
             c1, c2, c3 = st.columns(3)
             with c1:
-                minuten = st.slider("Min", 0, 9, 0)
+                minuten = st.slider("Min", 0, 9, 0, key="slider_minuten")
+                min_input = st.number_input(" ", min_value=0, max_value=9, value=minuten, key="input_minuten")
+                minuten = min_input  # Priorität Tastatureingabe
+
+            # --- Sekunden ---
             with c2:
-                sekunden = st.slider("Sek", 0, 59, 0)
+                sekunden = st.slider("Sek", 0, 59, 0, key="slider_sekunden")
+                sek_input = st.number_input("  ", min_value=0, max_value=59, value=sekunden, key="input_sekunden")
+                sekunden = sek_input
+
+            # --- Tausendstel ---
             with c3:
-                tausendstel = st.slider("Tsd", 0, 999, 0)
+                tausendstel = st.slider("Tsd", 0, 999, 0, key="slider_tausendstel")
+                tsd_input = st.number_input("   ", min_value=0, max_value=999, value=tausendstel, key="input_tausendstel")
+                tausendstel = tsd_input
 
         abgeschickt = st.form_submit_button("💾 Hinzufügen", use_container_width=True)
 
