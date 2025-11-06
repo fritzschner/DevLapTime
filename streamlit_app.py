@@ -183,6 +183,9 @@ def main():
             st.info("Mindestens 3 Zeiten pro Fahrer erforderlich.")
 
     # ---- Letzte Rundenzeiten ----
+    # Verhindert UnboundLocalError, falls keine Daten angezeigt werden
+    df_anzeige = pd.DataFrame()
+    
     if not df.empty and event_filter:
         st.subheader(f"⏱️ Letzte/Beste Rundenzeiten für Event: {event_filter}")
         df_event = df[df["Event"] == event_filter]
