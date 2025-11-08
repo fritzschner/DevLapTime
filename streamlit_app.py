@@ -228,7 +228,7 @@ def main():
     if not df_event.empty:
         event_bestzeit = df_event["Zeit (s)"].min()
     else:
-    event_bestzeit = None
+        event_bestzeit = None
     if not df_event.empty:
         rangliste = []
         for name, gruppe in df_event.groupby("Fahrer"):
