@@ -54,8 +54,17 @@ def lade_csv(file_id, spalten):
         return pd.DataFrame(columns=spalten)
 
 def speichere_csv(df, file_id):
-    """Speichert ein DataFrame als CSV auf Google Drive."""
+    """Speichert das DataFrame auf Google Drive (immer im ISO-Datumsformat YYYY-MM-DD HH:MM:SS)."""
     try:
+        if "Erfasst am_dt" in df.columns:
+            df = df.copy()
+            df["Erfasst am"] = df["Erfasst am_dt"].dt.strftime("%Y-%m-%d %H:%M:%S").fillna("")
+        elif "Erfasst am" in df.columns:
+            # Stelle sicher, dass Strings im ISO-Format sind (falls Nutzeränderungen)
+            df["Erfasst am"] = pd.to_datetime(
+                df["Erfasst am"], errors="coerce", dayfirst=True
+            ).dt.strftime("%Y-%m-%d %H:%M:%S").fillna("")
+
         fh = io.BytesIO()
         df.to_csv(fh, sep=";", index=False)
         fh.seek(0)
