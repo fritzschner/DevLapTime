@@ -19,6 +19,7 @@ drive_service = build("drive", "v3", credentials=creds)
 RUNDENZEITEN_FILE_ID = "1bzYUWbUPjyY_IJMjmzWp7J1_Ud2xyyji"
 EVENTS_FILE_ID = "11WeEQCBk2tJ7jobGymiSTNNHWgdxV6Zv"
 FAHRER_FILE_ID = "1d6zuytjCTGw8GUW7K7nOWgh4bi9XtaKp"
+LOESCH_PASSWORT = "Olli071220"  # <-- hier dein gewünschtes Passwort
 
 MEZ = pytz.timezone("Europe/Berlin")
 SPALTEN = ["Fahrer", "Minuten", "Sekunden", "Tausendstel", "Zeit (s)", "Zeitstr", "Erfasst am", "Event"]
@@ -272,15 +273,28 @@ def main():
 
     # ---- CSV Download & Alle löschen ----
     col_a, col_b = st.columns(2)
-    with col_a:
-        st.download_button("📥 Alle Zeiten als CSV", df_event.to_csv(index=False, sep=";").encode("utf-8"), "rundenzeiten.csv", "text/csv", use_container_width=True)
-    with col_b:
-        if st.button("🗑️ Alle Zeiten für Event löschen", use_container_width=True):
-            df = df[df["Event"]!=event_filter]
-            speichere_csv(df, RUNDENZEITEN_FILE_ID)
-            st.success("🗑️ Alle Zeiten gelöscht!")
-            st.rerun()
 
+    # CSV Download
+    with col_a:
+        st.download_button(
+            "📥 Alle Zeiten als CSV",
+            df_event.to_csv(index=False, sep=";").encode("utf-8"),
+            "rundenzeiten.csv",
+            "text/csv",
+            use_container_width=True
+        )
+
+    # Alle löschen mit Passwort
+    with col_b:
+        passwort_eingabe = st.text_input("🔑 Passwort zum Löschen aller Zeiten:", type="password")
+        if st.button("🗑️ Alle Zeiten für Event löschen", use_container_width=True):
+            if passwort_eingabe == LOESCH_PASSWORT:
+                df = df[df["Event"] != event_filter]
+                speichere_csv(df, RUNDENZEITEN_FILE_ID)
+                st.success("🗑️ Alle Zeiten für Event gelöscht!")
+                st.rerun()
+            else:
+                st.error("❌ Falsches Passwort. Löschvorgang abgebrochen.")
 
 # -------------------------------------------------
 if __name__=="__main__":
