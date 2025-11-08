@@ -157,7 +157,7 @@ def main():
     """, unsafe_allow_html=True)
     
     # ---- App-Inhalte (Titel, Event-Auswahl, Eingabe usw.) ----
-    st.markdown('<div style="background-color:#c20000;color:white;padding:15px;text-align:center;border-radius:12px;font-size:32px;font-weight:bold;margin-bottom:25px;">🏁 RaceKino Rundenzeiten</div>', unsafe_allow_html=True)
+    st.markdown('<div style="background-color:#c20000;color:white;padding:15px;text-align:center;border-radius:12px;font-size:32px;font-weight:bold;margin-bottom:25px;">🏎️🏁 RaceKino Rundenzeiten 🏁🏎️</div>', unsafe_allow_html=True)
 
     # ---- Daten laden ----
     df = lade_csv(RUNDENZEITEN_FILE_ID, SPALTEN)
