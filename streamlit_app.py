@@ -219,8 +219,11 @@ def main():
         best_dict[name] = sortiert.iloc[0]["Zeit (s)"] if not sortiert.empty else None
         top3_dict[name] = set(sortiert["Zeit (s)"].nsmallest(3))
 
-    # --- Ermittle die global letzten drei Einträge (nach Erfasst am) ---
-    df_sorted_global = df.sort_values("Erfasst am", ascending=False)
+    # --- Sicherstellen, dass "Erfasst am" als datetime erkannt wird ---
+    df["Erfasst am"] = pd.to_datetime(df["Erfasst am"], format="%d.%m.%Y %H:%M:%S", errors="coerce")
+
+    # --- Nur gültige Zeitstempel berücksichtigen ---
+    df_sorted_global = df.dropna(subset=["Erfasst am"]).sort_values("Erfasst am", ascending=False)
     letzte_drei_indices = set(df_sorted_global.head(3).index)
 
     for idx, row in df_anzeige.iterrows():
@@ -234,7 +237,7 @@ def main():
         with col1:
             st.markdown(
                 f'<div class="time-box" style="{box_style}">'
-                f'<b>{row["Fahrer"]}</b>   –   <i>{row["Event"]}</i><br>'
+                f'<b>{row["Fahrer"]}</b> – <i>{row["Event"]}</i><br>'
                 f'⏱️ {zeit_html}<br>'
                 f'<span style="color:gray;font-size:12px;">({row["Erfasst am"]}) {best_text}</span>'
                 f'</div>',
@@ -242,7 +245,7 @@ def main():
             )
 
         with col2:
-            st.write("")  # Abstand
+            st.write("")
             if row.name in letzte_drei_indices:
                 if st.button("🗑️", key=f"del_{row.name}", help="Nur eine der letzten 3 Zeiten ist löschbar"):
                     df = df.drop(row.name).reset_index(drop=True)
@@ -254,7 +257,6 @@ def main():
                     "<div style='text-align:center;color:gray;font-size:12px;'>🔒 Gesperrt</div>",
                     unsafe_allow_html=True
                 )
-
 
     # ---- Download & Alle löschen ----
     col_a, col_b = st.columns(2)
