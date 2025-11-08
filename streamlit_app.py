@@ -273,9 +273,24 @@ def main():
     # ---- Letzte Rundenzeiten ----
     st.subheader(f"⏱️ Letzte/Beste Rundenzeiten für Event: {event_filter}")
     fahrer_filter = st.multiselect("Filter nach Fahrer:", options=sorted(df_event["Fahrer"].unique()), default=None)
-    sortierung = st.radio("Sortierung:", ["Neueste Einträge zuerst","Schnellste Zeiten zuerst"], horizontal=True)
+    # ---- Filter für Anzeige ----
+    sortierung = st.radio(
+        "Sortierung / Filter:",
+        ["Neueste Einträge zuerst", "Schnellste Zeiten zuerst", "Nur persönliche Bestzeiten"],
+        horizontal=True
+    )
+
     df_filtered = df_event[df_event["Fahrer"].isin(fahrer_filter)] if fahrer_filter else df_event
-    df_anzeige = df_filtered.sort_values("Erfasst am_dt", ascending=False) if sortierung=="Neueste Einträge zuerst" else df_filtered.sort_values("Zeit (s)")
+
+    if sortierung == "Neueste Einträge zuerst":
+        df_anzeige = df_filtered.sort_values("Erfasst am", ascending=False)
+    elif sortierung == "Schnellste Zeiten zuerst":
+        df_anzeige = df_filtered.sort_values("Zeit (s)")
+    elif sortierung == "Nur persönliche Bestzeiten":
+        # Bestzeiten pro Fahrer auswählen
+        beste_zeiten = df_filtered.groupby("Fahrer")["Zeit (s)"].idxmin()
+        df_anzeige = df_filtered.loc[beste_zeiten].sort_values("Zeit (s)")
+
     df_anzeige = df_anzeige.head(st.slider("Anzahl angezeigter Zeiten", 5, 50, 10))
 
     letzte_drei_indices = get_letzte_drei_indices(df)
