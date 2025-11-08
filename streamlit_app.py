@@ -35,7 +35,7 @@ def sekunden_zu_zeitstr(sekunden):
     return f"{minuten}:{sek:02d}.{tausendstel:03d}"
 
 def lade_csv(file_id, spalten):
-    """Lädt eine CSV-Datei von Google Drive und stellt sicher, dass alle Spalten vorhanden sind."""
+    """Lädt CSV-Datei und vereinheitlicht Datumsformat auf YYYY-MM-DD HH:MM:SS."""
     try:
         request = drive_service.files().get_media(fileId=file_id)
         fh = io.BytesIO()
@@ -45,13 +45,34 @@ def lade_csv(file_id, spalten):
             _, done = downloader.next_chunk()
         fh.seek(0)
         df = pd.read_csv(fh, sep=";")
+
         for s in spalten:
             if s not in df.columns:
                 df[s] = ""
+
+        # Einheitliche Datumsverarbeitung
+        if "Erfasst am" in df.columns:
+            df["Erfasst am"] = df["Erfasst am"].astype(str).replace("nan", "")
+            # Erstes Parsing (ISO)
+            parsed1 = pd.to_datetime(df["Erfasst am"], format="%Y-%m-%d %H:%M:%S", errors="coerce")
+            # Zweites Parsing (deutsches Format)
+            parsed2 = pd.to_datetime(df["Erfasst am"], format="%d.%m.%Y %H:%M:%S", errors="coerce")
+            # Kombination: nimm parsed1, wenn NaT dann parsed2
+            df["Erfasst am_dt"] = parsed1.fillna(parsed2)
+            # Anzeige und Speicherung immer im ISO-Format
+            df["Erfasst am"] = df["Erfasst am_dt"].dt.strftime("%Y-%m-%d %H:%M:%S").fillna("")
+        else:
+            df["Erfasst am"] = ""
+            df["Erfasst am_dt"] = pd.NaT
+
         return df
+
     except Exception as e:
         st.warning(f"⚠️ Datei konnte nicht geladen werden: {e}")
-        return pd.DataFrame(columns=spalten)
+        df_empty = pd.DataFrame(columns=spalten)
+        df_empty["Erfasst am"] = ""
+        df_empty["Erfasst am_dt"] = pd.NaT
+        return df_empty
 
 def speichere_csv(df, file_id):
     """Speichert das DataFrame auf Google Drive (immer im ISO-Datumsformat YYYY-MM-DD HH:MM:SS)."""
