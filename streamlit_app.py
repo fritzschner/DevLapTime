@@ -219,8 +219,11 @@ def main():
         best_dict[name] = sortiert.iloc[0]["Zeit (s)"] if not sortiert.empty else None
         top3_dict[name] = set(sortiert["Zeit (s)"].nsmallest(3))
 
+    # --- Ermittle die global letzten drei Einträge (nach Erfasst am) ---
+    df_sorted_global = df.sort_values("Erfasst am", ascending=False)
+    letzte_drei_indices = set(df_sorted_global.head(3).index)
+
     for idx, row in df_anzeige.iterrows():
-        col1, col2 = st.columns([6, 1])
         ist_bestzeit = abs(row["Zeit (s)"] - best_dict.get(row["Fahrer"], float("inf"))) < 0.0001
         ist_top3 = row["Zeit (s)"] in top3_dict.get(row["Fahrer"], set())
         box_style = "background-color: #fff9b1; color: black;" if ist_bestzeit else ""
@@ -237,12 +240,21 @@ def main():
                 f'</div>',
                 unsafe_allow_html=True
             )
+
         with col2:
             st.write("")  # Abstand
-            if st.button("🗑️", key=f"del_{row.name}", help="Diesen Eintrag löschen"):
-                df = df.drop(row.name).reset_index(drop=True)
-                speichere_csv(df, RUNDENZEITEN_FILE_ID)
-                st.success("✅ Eintrag gelöscht!")
+            if row.name in letzte_drei_indices:
+                if st.button("🗑️", key=f"del_{row.name}", help="Nur eine der letzten 3 Zeiten ist löschbar"):
+                    df = df.drop(row.name).reset_index(drop=True)
+                    speichere_csv(df, RUNDENZEITEN_FILE_ID)
+                    st.success("✅ Letzter Eintrag gelöscht!")
+                    st.experimental_rerun()
+            else:
+                st.markdown(
+                    "<div style='text-align:center;color:gray;font-size:12px;'>🔒 Gesperrt</div>",
+                    unsafe_allow_html=True
+                )
+
 
     # ---- Download & Alle löschen ----
     col_a, col_b = st.columns(2)
