@@ -286,15 +286,33 @@ def main():
 
     # Alle löschen mit Passwort
     with col_b:
-        passwort_eingabe = st.text_input("🔑 Passwort zum Löschen aller Zeiten:", type="password")
-        if st.button("🗑️ Alle Zeiten für Event löschen", use_container_width=True):
-            if passwort_eingabe == LOESCH_PASSWORT:
-                df = df[df["Event"] != event_filter]
-                speichere_csv(df, RUNDENZEITEN_FILE_ID)
-                st.success("🗑️ Alle Zeiten für Event gelöscht!")
-                st.rerun()
-            else:
-                st.error("❌ Falsches Passwort. Löschvorgang abgebrochen.")
+        # Session-State Initialisierung
+        if "show_delete_password" not in st.session_state:
+            st.session_state["show_delete_password"] = False
+
+        # Button zum Anzeigen der Passwortabfrage
+        if not st.session_state["show_delete_password"]:
+            if st.button("🗑️ Alle Zeiten für Event löschen", use_container_width=True):
+                st.session_state["show_delete_password"] = True
+        else:
+            st.warning("⚠️ Bitte Passwort eingeben, um alle Zeiten zu löschen:")
+            passwort_eingabe = st.text_input("🔑 Passwort:", type="password")
+
+            col_yes, col_no = st.columns([1,1])
+            with col_yes:
+                if st.button("🗑️ Ja, löschen", use_container_width=True):
+                    if passwort_eingabe == LOESCH_PASSWORT:
+                        df = df[df["Event"] != event_filter]
+                        speichere_csv(df, RUNDENZEITEN_FILE_ID)
+                        st.success("🗑️ Alle Zeiten für Event gelöscht!")
+                        st.session_state["show_delete_password"] = False
+                        st.rerun()
+                    else:
+                        st.error("❌ Falsches Passwort. Löschvorgang abgebrochen.")
+            with col_no:
+                if st.button("❌ Abbrechen", use_container_width=True):
+                    st.session_state["show_delete_password"] = False
+                    st.info("Löschvorgang abgebrochen.")
 
 # -------------------------------------------------
 if __name__=="__main__":
