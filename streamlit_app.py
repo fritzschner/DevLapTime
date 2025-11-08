@@ -303,7 +303,7 @@ def main():
 
         zeit_html = f"⭐ <b>{row['Zeitstr']}</b>" if ist_top3 else row["Zeitstr"]
         best_text = " <b>Persönliche Bestzeit</b>" if ist_bestzeit else ""
-        event_text = " <b>Event-Bestzeit</b>" if ist_event_best else ""
+        event_text = " <b>und Event-Bestzeit</b>" if ist_event_best else ""
 
         locked_class = "" if row.name in letzte_drei_indices else "locked"
 
