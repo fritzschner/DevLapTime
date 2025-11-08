@@ -144,7 +144,12 @@ def main():
     .time-box .meta {
         font-size: 12px;
         color: gray;
-    #}
+    }
+    .time-box.best-event {
+    background-color: #00bfff99 !important;  /* Hellblau für Event-Bestzeit */
+    color: black;
+    font-weight: bold;
+    }
     #.time-box.locked {
     #    opacity: 0.6;
     #    background-color: #2a2a2a !important;
@@ -221,6 +226,10 @@ def main():
     # ---- Rangliste ----
     df_event = df[df["Event"]==event_filter]
     if not df_event.empty:
+        event_bestzeit = df_event["Zeit (s)"].min()
+    else:
+    event_bestzeit = None
+    if not df_event.empty:
         rangliste = []
         for name, gruppe in df_event.groupby("Fahrer"):
             beste3 = gruppe["Zeit (s)"].nsmallest(3)
@@ -282,26 +291,29 @@ def main():
 
     for idx, row in df_anzeige.iterrows():
         col1, col2 = st.columns([6,1])
-        
+
         ist_bestzeit = abs(row["Zeit (s)"] - best_dict.get(row["Fahrer"], float("inf"))) < 0.0001
         ist_top3 = row["Zeit (s)"] in top3_dict.get(row["Fahrer"], set())
-        
+        ist_event_best = event_bestzeit is not None and abs(row["Zeit (s)"] - event_bestzeit) < 0.0001
+
         # Box-Hintergrund für persönliche Bestzeit
         box_style = "background-color:#fff9b1;color:black;" if ist_bestzeit else ""
-        
-        # Zeit-Text mit Sternchen bei Top-3
+
+        # Zusätzliche Klasse, wenn Event-Bestzeit
+        extra_class = "best-event" if ist_event_best else ""
+
         zeit_html = f"⭐ <b>{row['Zeitstr']}</b>" if ist_top3 else row["Zeitstr"]
         best_text = " <b>Persönliche Bestzeit</b>" if ist_bestzeit else ""
-        
-        # Locked-Style für nicht löschbare Zeiten
+        event_text = " <b>Event-Bestzeit</b>" if ist_event_best else ""
+
         locked_class = "" if row.name in letzte_drei_indices else "locked"
-        
+
         with col1:
             st.markdown(
-                f'<div class="time-box {locked_class}" style="{box_style}">'
+                f'<div class="time-box {locked_class} {extra_class}" style="{box_style}">'
                 f'<div class="fahrer-name">{row["Fahrer"]}</div>'
                 f'<div class="zeit">{zeit_html}</div>'
-                f'<div class="meta">Event: {row["Event"]} – Erfasst am: {row["Erfasst am"]}{best_text}</div>'
+                f'<div class="meta">Event: {row["Event"]} – Erfasst am: {row["Erfasst am"]}{best_text}{event_text}</div>'
                 f'</div>',
                 unsafe_allow_html=True
             )
