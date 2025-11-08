@@ -144,11 +144,11 @@ def main():
     .time-box .meta {
         font-size: 12px;
         color: gray;
-    }
-    .time-box.locked {
-        opacity: 0.6;
-        background-color: #2a2a2a !important;
-    }
+    #}
+    #.time-box.locked {
+    #    opacity: 0.6;
+    #    background-color: #2a2a2a !important;
+    #}
     </style>
     """, unsafe_allow_html=True)
     
