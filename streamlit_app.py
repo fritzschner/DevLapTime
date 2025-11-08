@@ -263,7 +263,7 @@ def main():
                     else ""
                 )
                 st.markdown(
-                    f'<div class="ranking-entry {style}">{row["Medaille"]} <b>{row["Platz"]}. {row["Fahrer"]}</b> – {row["Durchschnitt (Top 3)"]}</div>',
+                    f'<div class="ranking-entry {style}"><b>{row["Platz"]}. {row["Fahrer"]}</b> – {row["Durchschnitt (Top 3)"]}{row["Medaille"]} </div>',
                     unsafe_allow_html=True
                 )
 
