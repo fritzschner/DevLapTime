@@ -68,21 +68,21 @@ def lade_csv(file_id, spalten):
         return pd.DataFrame(columns=spalten)
 
 def speichere_csv(df, file_id):
-    """CSV speichern im ISO-Datumsformat. Fehlende oder falsche Datetime-Werte werden ersetzt."""
+    """CSV speichern im ISO-Datumsformat. Sicher gegen .dt accessor Fehler."""
     try:
-        # Erfasst am_dt: alles konvertieren oder aktuelle Zeit setzen
-        if "Erfasst am_dt" in df.columns:
-            jetzt = datetime.now(MEZ)
-            df["Erfasst am_dt"] = pd.to_datetime(df["Erfasst am_dt"], errors="coerce")  # konvertieren, NaT möglich
-            df["Erfasst am_dt"] = df["Erfasst am_dt"].fillna(jetzt)  # NaT ersetzen
-            df["Erfasst am"] = df["Erfasst am_dt"].dt.strftime("%Y-%m-%d %H:%M:%S")
-        else:
-            # Falls Spalte nicht existiert, erstellen
-            jetzt = datetime.now(MEZ)
+        jetzt = datetime.now(MEZ)
+        if "Erfasst am_dt" not in df.columns:
             df["Erfasst am_dt"] = jetzt
-            df["Erfasst am"] = jetzt.strftime("%Y-%m-%d %H:%M:%S")
+        else:
+            # Konvertieren in datetime, fehlerhafte Werte -> NaT
+            df["Erfasst am_dt"] = pd.to_datetime(df["Erfasst am_dt"], errors="coerce")
+            # NaT mit aktuellem Zeitpunkt ersetzen
+            df["Erfasst am_dt"] = df["Erfasst am_dt"].fillna(jetzt)
 
-        # CSV in Drive speichern
+        # ISO-Format für CSV
+        df["Erfasst am"] = df["Erfasst am_dt"].apply(lambda x: x.strftime("%Y-%m-%d %H:%M:%S"))
+
+        # CSV speichern
         fh = io.BytesIO()
         df.to_csv(fh, sep=";", index=False)
         fh.seek(0)
