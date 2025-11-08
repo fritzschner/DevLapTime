@@ -327,7 +327,7 @@ def main():
                 f'<div class="time-box {locked_class} {extra_class}" style="{box_style}">'
                 f'<div class="fahrer-name">{row["Fahrer"]}</div>'
                 f'<div class="zeit">{zeit_html}</div>'
-                f'<div class="meta">Event: {row["Event"]} – Erfasst am: {row["Erfasst am"]}{best_text}{event_text}</div>'
+                f'<div class="meta">{row["Event"]} – Erfasst am: {row["Erfasst am"]}{best_text}{event_text}</div>'
                 f'</div>',
                 unsafe_allow_html=True
             )
