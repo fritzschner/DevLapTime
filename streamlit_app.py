@@ -18,6 +18,7 @@ drive_service = build("drive", "v3", credentials=creds)
 
 RUNDENZEITEN_FILE_ID = "1bzYUWbUPjyY_IJMjmzWp7J1_Ud2xyyji"
 EVENTS_FILE_ID = "11WeEQCBk2tJ7jobGymiSTNNHWgdxV6Zv"
+FAHRER_FILE_ID = "1d6zuytjCTGw8GUW7K7nOWgh4bi9XtaKp"
 
 MEZ = pytz.timezone("Europe/Berlin")
 
@@ -33,6 +34,25 @@ def sekunden_zu_zeitstr(sekunden):
     sek = int(rest)
     tausendstel = int(round((rest - sek) * 1000))
     return f"{minuten}:{sek:02d}.{tausendstel:03d}"
+
+def lade_fahrer_csv(file_id):
+    """Lädt die CSV mit Fahrernamen von Google Drive."""
+    try:
+        request = drive_service.files().get_media(fileId=file_id)
+        fh = io.BytesIO()
+        downloader = MediaIoBaseDownload(fh, request)
+        done = False
+        while not done:
+            _, done = downloader.next_chunk()
+        fh.seek(0)
+        df_fahrer = pd.read_csv(fh, sep=";")
+        if "Fahrer" not in df_fahrer.columns:
+            st.error("🚨 Fahrer.csv muss eine Spalte 'Fahrer' enthalten!")
+            return []
+        return sorted(df_fahrer["Fahrer"].dropna().unique())
+    except Exception as e:
+        st.warning(f"⚠️ Fahrer-Datei konnte nicht geladen werden: {e}")
+        return []
 
 def lade_csv(file_id, spalten):
     """Lädt CSV-Datei und normalisiert Datum auf ISO-Format (YYYY-MM-DD HH:MM:SS)."""
@@ -127,7 +147,12 @@ def main():
     col_fahrer, col_zeit, col_button = st.columns([3, 2, 1])
 
     with col_fahrer:
-        fahrer = st.text_input("Fahrername")
+        fahrer_liste = lade_fahrer_csv(FAHRER_FILE_ID)
+        if fahrer_liste:
+            fahrer = st.selectbox("Fahrer auswählen", options=fahrer_liste)
+        else:
+            fahrer = None
+            st.warning("Keine Fahrer verfügbar!")
 
     with col_zeit:
         raw_input = st.text_input("6 Ziffern (MSSTTT)", max_chars=6)
