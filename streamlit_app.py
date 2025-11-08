@@ -162,14 +162,19 @@ def main():
     # ---- Daten laden ----
     df = lade_csv(RUNDENZEITEN_FILE_ID, SPALTEN)
     df_events = lade_csv(EVENTS_FILE_ID, ["Event"])
-    events = sorted(df_events["Event"].dropna().unique()) if not df_events.empty else []
+
+    if not df_events.empty:
+        # Reihenfolge aus Datei beibehalten, erster Eintrag oben
+        events = df_events["Event"].dropna().tolist()
+    else:
+        events = []
 
     if not events:
         st.warning("Keine Events vorhanden.")
         st.stop()
 
     # ---- Event-Auswahl ----
-    event_filter = st.selectbox("🔹 Wähle ein Event", options=events)
+    event_filter = st.selectbox("🔹 Wähle ein Event", options=events, index=0)
 
     # ---- Neue Rundenzeit eintragen ----
     st.subheader("🏎️ Neue Rundenzeit eintragen")
