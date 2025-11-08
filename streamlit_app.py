@@ -222,11 +222,15 @@ def main():
     # --- Sicherstellen, dass "Erfasst am" als datetime erkannt wird ---
     df["Erfasst am"] = pd.to_datetime(df["Erfasst am"], format="%d.%m.%Y %H:%M:%S", errors="coerce")
 
-    # --- Nur gültige Zeitstempel berücksichtigen ---
-    df_sorted_global = df.dropna(subset=["Erfasst am"]).sort_values("Erfasst am", ascending=False)
-    letzte_drei_indices = set(df_sorted_global.head(3).index)
+    def get_letzte_drei_indices(df):
+        """Gibt die Indizes der letzten drei globalen Einträge zurück."""
+        df_valid = df.dropna(subset=["Erfasst am"]).sort_values("Erfasst am", ascending=False)
+        return set(df_valid.head(3).index)
 
     for idx, row in df_anzeige.iterrows():
+        # Die letzten 3 Indizes jedes Mal aktuell berechnen:
+        letzte_drei_indices = get_letzte_drei_indices(df)
+
         ist_bestzeit = abs(row["Zeit (s)"] - best_dict.get(row["Fahrer"], float("inf"))) < 0.0001
         ist_top3 = row["Zeit (s)"] in top3_dict.get(row["Fahrer"], set())
         box_style = "background-color: #fff9b1; color: black;" if ist_bestzeit else ""
@@ -246,9 +250,12 @@ def main():
 
         with col2:
             st.write("")
+
+            # Nur die aktuell letzten 3 globalen Zeiten dürfen gelöscht werden
             if row.name in letzte_drei_indices:
-                if st.button("🗑️", key=f"del_{row.name}", help="Nur eine der letzten 3 Zeiten ist löschbar"):
-                    df = df.drop(row.name).reset_index(drop=True)
+                if st.button("🗑️", key=f"del_{row.name}", help="Nur eine der letzten 3 globalen Zeiten ist löschbar"):
+                    df = df.drop(index=row.name)
+                    df.reset_index(drop=True, inplace=True)
                     speichere_csv(df, RUNDENZEITEN_FILE_ID)
                     st.success("✅ Letzter Eintrag gelöscht!")
                     st.rerun()
