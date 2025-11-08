@@ -251,7 +251,7 @@ def main():
                     df = df.drop(row.name).reset_index(drop=True)
                     speichere_csv(df, RUNDENZEITEN_FILE_ID)
                     st.success("✅ Letzter Eintrag gelöscht!")
-                    st.experimental_rerun()
+                    st.rerun()
             else:
                 st.markdown(
                     "<div style='text-align:center;color:gray;font-size:12px;'>🔒 Gesperrt</div>",
@@ -285,7 +285,7 @@ def main():
                     speichere_csv(df, RUNDENZEITEN_FILE_ID)
                     st.session_state["show_delete_all_confirm"] = False
                     st.success("🗑️ Alle Zeiten für Event gelöscht.")
-                    st.experimental_rerun()
+                    st.rerun()
             with col_no:
                 if st.button("❌ Abbrechen", key="cancel_delete_all", use_container_width=True):
                     st.session_state["show_delete_all_confirm"] = False
