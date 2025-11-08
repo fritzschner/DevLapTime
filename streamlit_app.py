@@ -68,21 +68,16 @@ def lade_csv(file_id, spalten):
         return pd.DataFrame(columns=spalten)
 
 def speichere_csv(df, file_id):
-    """CSV speichern im ISO-Datumsformat. Sicher gegen .dt accessor Fehler."""
+    """CSV speichern im ISO-Datumsformat. Robust gegen .dt accessor Fehler."""
     try:
         jetzt = datetime.now(MEZ)
         if "Erfasst am_dt" not in df.columns:
             df["Erfasst am_dt"] = jetzt
         else:
-            # Konvertieren in datetime, fehlerhafte Werte -> NaT
             df["Erfasst am_dt"] = pd.to_datetime(df["Erfasst am_dt"], errors="coerce")
-            # NaT mit aktuellem Zeitpunkt ersetzen
             df["Erfasst am_dt"] = df["Erfasst am_dt"].fillna(jetzt)
-
-        # ISO-Format für CSV
         df["Erfasst am"] = df["Erfasst am_dt"].apply(lambda x: x.strftime("%Y-%m-%d %H:%M:%S"))
 
-        # CSV speichern
         fh = io.BytesIO()
         df.to_csv(fh, sep=";", index=False)
         fh.seek(0)
@@ -120,7 +115,6 @@ def get_letzte_drei_indices(df):
 # -------------------------------------------------
 def main():
     st.set_page_config(page_title="RaceKino Rundenzeiten", layout="wide")
-
     st.markdown('<div style="background-color:#c20000;color:white;padding:15px;text-align:center;border-radius:12px;font-size:32px;font-weight:bold;margin-bottom:25px;">🏁 RaceKino Rundenzeiten</div>', unsafe_allow_html=True)
 
     # ---- Daten laden ----
@@ -220,12 +214,31 @@ def main():
 
     letzte_drei_indices = get_letzte_drei_indices(df)
 
+    # ---- Bestzeiten für Hervorhebung ----
+    best_dict = {}
+    top3_dict = {}
+    for name, gruppe in df_event.groupby("Fahrer"):
+        sortiert = gruppe.sort_values("Zeit (s)")
+        best_dict[name] = sortiert.iloc[0]["Zeit (s)"] if not sortiert.empty else None
+        top3_dict[name] = set(sortiert["Zeit (s)"].nsmallest(3))
+
     for idx, row in df_anzeige.iterrows():
         col1, col2 = st.columns([6,1])
-        ist_bestzeit = abs(row["Zeit (s)"] - df_event[df_event["Fahrer"]==row["Fahrer"]]["Zeit (s)"].min())<0.0001
+        ist_bestzeit = abs(row["Zeit (s)"] - best_dict.get(row["Fahrer"], float("inf"))) < 0.0001
+        ist_top3 = row["Zeit (s)"] in top3_dict.get(row["Fahrer"], set())
         box_style = "background-color:#fff9b1;color:black;" if ist_bestzeit else ""
+        best_text = " <b>Persönliche Bestzeit</b>" if ist_bestzeit else ""
+        zeit_html = f"⭐ <b>{row['Zeitstr']}</b>" if ist_top3 else row["Zeitstr"]
+
         with col1:
-            st.markdown(f'<div class="time-box" style="{box_style}"><b>{row["Fahrer"]}</b> – <i>{row["Event"]}</i><br>⏱️ {row["Zeitstr"]}<br><span style="color:gray;font-size:12px;">({row["Erfasst am"]})</span></div>', unsafe_allow_html=True)
+            st.markdown(
+                f'<div class="time-box" style="{box_style}">'
+                f'<b>{row["Fahrer"]}</b> – <i>{row["Event"]}</i><br>'
+                f'⏱️ {zeit_html}<br>'
+                f'<span style="color:gray;font-size:12px;">({row["Erfasst am"]}){best_text}</span>'
+                f'</div>',
+                unsafe_allow_html=True
+            )
         with col2:
             if row.name in letzte_drei_indices:
                 if st.button("🗑️", key=f"del_{row.name}"):
