@@ -193,14 +193,34 @@ def main():
                     "Wert": beste3.mean()
                 })
         if rangliste:
-            st.subheader(f"🏆 Rangliste für Event: {event_filter}")
-            medaillen = ["🥇","🥈","🥉"]
-            rang_df = pd.DataFrame(rangliste).sort_values("Wert").reset_index(drop=True)
-            rang_df["Platz"] = rang_df.index+1
-            rang_df["Medaille"] = rang_df["Platz"].apply(lambda x: medaillen[x-1] if x<=3 else "")
-            for _, row in rang_df.iterrows():
-                style = "gold" if row["Platz"]==1 else "silver" if row["Platz"]==2 else "bronze" if row["Platz"]==3 else ""
-                st.markdown(f'<div class="ranking-entry {style}">{row["Medaille"]} <b>{row["Platz"]}. {row["Fahrer"]}</b> – {row["Durchschnitt (Top 3)"]}</div>', unsafe_allow_html=True)
+    st.subheader(f"🏆 Rangliste für Event: {event_filter}")
+    medaillen = ["🥇","🥈","🥉"]
+    rang_df = pd.DataFrame(rangliste).sort_values("Wert").reset_index(drop=True)
+    rang_df["Platz"] = rang_df.index+1
+    rang_df["Medaille"] = rang_df["Platz"].apply(lambda x: medaillen[x-1] if x<=3 else "")
+
+    # CSS für Medaillen-Hintergrund
+    st.markdown("""
+    <style>
+    .gold { background-color: #FFD700CC; color: black; padding: 8px; border-radius: 8px; margin-bottom: 4px; }
+    .silver { background-color: #C0C0C0CC; color: black; padding: 8px; border-radius: 8px; margin-bottom: 4px; }
+    .bronze { background-color: #CD7F32CC; color: white; padding: 8px; border-radius: 8px; margin-bottom: 4px; }
+    .ranking-entry { padding: 8px; margin-bottom: 4px; border-radius: 8px; }
+    </style>
+    """, unsafe_allow_html=True)
+
+    for _, row in rang_df.iterrows():
+        style = (
+            "gold" if row["Platz"]==1 
+            else "silver" if row["Platz"]==2 
+            else "bronze" if row["Platz"]==3 
+            else ""
+        )
+        st.markdown(
+            f'<div class="ranking-entry {style}">{row["Medaille"]} <b>{row["Platz"]}. {row["Fahrer"]}</b> – {row["Durchschnitt (Top 3)"]}</div>',
+            unsafe_allow_html=True
+        )
+
         else:
             st.info("Mindestens 3 Zeiten pro Fahrer erforderlich.")
 
