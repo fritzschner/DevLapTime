@@ -147,7 +147,6 @@ def main():
     }
     .time-box.best-event {
     background-color: #00bfff99 !important;  /* Hellblau für Event-Bestzeit */
-    color: white;
     font-weight: bold;
     }
     #.time-box.locked {
