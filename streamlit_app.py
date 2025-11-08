@@ -146,7 +146,7 @@ def main():
         color: gray;
     }
     .time-box.best-event {
-    background-color: #c20000 !important;  /* Rot für Event-Bestzeit */
+    background-color: #90EE90 !important;  /* Hellgrün für Event-Bestzeit */
     font-weight: bold;
     }
     #.time-box.locked {
