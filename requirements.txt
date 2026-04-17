@@ -1,5 +1,6 @@
 streamlit
 pandas
+pytz
 google-auth
 google-auth-oauthlib
 google-auth-httplib2
